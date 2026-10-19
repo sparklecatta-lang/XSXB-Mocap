@@ -74,6 +74,7 @@ sun_d = bpy.data.lights.new("Key", 'SUN'); sun_d.energy = 2.2; sun_d.angle = mat
 sun = bpy.data.objects.new("Key", sun_d); sc.collection.objects.link(sun)
 sun.rotation_euler = Euler((math.radians(35), 0, math.radians(cams["panels"]["side"]["az_deg"] - 30)))
 sc.render.engine = 'BLENDER_EEVEE'; sc.eevee.taa_render_samples = 16
+sc.render.film_transparent = False                  # level cameras see the sky: show the backdrop, not black
 sc.view_settings.view_transform = 'Standard'
 sc.render.resolution_x, sc.render.resolution_y = PW, PH
 sc.render.image_settings.file_format = 'JPEG'
