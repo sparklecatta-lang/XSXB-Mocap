@@ -1,0 +1,284 @@
+{
+ "name": "cat",
+ "armature": "CF_Cat_Rig",
+ "mesh": "CF_CatForm_Original",
+ "orientation": {
+  "forward": "-Y",
+  "left": "+X"
+ },
+ "side_tokens": ["_L_", "_R_"],
+ "mirror_sign": [1, -1, -1],
+ "keypoints": [
+  ["pelvis", "Cat_Pelvis", "head"],
+  ["spine1", "Cat_Spine_01", "head"],
+  ["spine2", "Cat_Spine_02", "head"],
+  ["spine3", "Cat_Spine_03", "head"],
+  ["spine4", "Cat_Spine_04", "head"],
+  ["neck1", "Cat_Neck_01", "head"],
+  ["neck2", "Cat_Neck_02", "head"],
+  ["head", "Cat_Head", "head"],
+  ["nose", "Cat_Head", "tail"],
+  ["l_ear", "Cat_L_Ear", "tail"],
+  ["r_ear", "Cat_R_Ear", "tail"],
+  ["l_scap", "Cat_L_Scapula", "head"],
+  ["l_shoulder", "Cat_L_UpperArm", "head"],
+  ["l_elbow", "Cat_L_Forearm", "head"],
+  ["l_wrist", "Cat_L_ForePaw", "head"],
+  ["l_fmcp", "Cat_L_ForeToes", "head"],
+  ["l_ftoe", "Cat_L_ForeToes", "tail"],
+  ["l_hip", "Cat_L_Thigh", "head"],
+  ["l_knee", "Cat_L_Shin", "head"],
+  ["l_hock", "Cat_L_HindPaw", "head"],
+  ["l_hmtp", "Cat_L_HindToes", "head"],
+  ["l_htoe", "Cat_L_HindToes", "tail"],
+  ["r_scap", "Cat_R_Scapula", "head"],
+  ["r_shoulder", "Cat_R_UpperArm", "head"],
+  ["r_elbow", "Cat_R_Forearm", "head"],
+  ["r_wrist", "Cat_R_ForePaw", "head"],
+  ["r_fmcp", "Cat_R_ForeToes", "head"],
+  ["r_ftoe", "Cat_R_ForeToes", "tail"],
+  ["r_hip", "Cat_R_Thigh", "head"],
+  ["r_knee", "Cat_R_Shin", "head"],
+  ["r_hock", "Cat_R_HindPaw", "head"],
+  ["r_hmtp", "Cat_R_HindToes", "head"],
+  ["r_htoe", "Cat_R_HindToes", "tail"],
+  ["tail1", "Cat_Tail_01", "head"],
+  ["tail4", "Cat_Tail_04", "tail"],
+  ["tail8", "Cat_Tail_08", "tail"],
+  ["tail12", "Cat_Tail_12", "tail"],
+  ["tail16", "Cat_Tail_16", "tail"]
+ ],
+ "skeleton": [
+  ["pelvis", "spine1"],
+  ["spine1", "spine2"],
+  ["spine2", "spine3"],
+  ["spine3", "spine4"],
+  ["spine4", "neck1"],
+  ["neck1", "neck2"],
+  ["neck2", "head"],
+  ["head", "nose"],
+  ["head", "l_ear"],
+  ["head", "r_ear"],
+  ["pelvis", "tail1"],
+  ["tail1", "tail4"],
+  ["tail4", "tail8"],
+  ["tail8", "tail12"],
+  ["tail12", "tail16"],
+  ["l_scap", "l_shoulder"],
+  ["l_shoulder", "l_elbow"],
+  ["l_elbow", "l_wrist"],
+  ["l_wrist", "l_fmcp"],
+  ["l_fmcp", "l_ftoe"],
+  ["l_hip", "l_knee"],
+  ["l_knee", "l_hock"],
+  ["l_hock", "l_hmtp"],
+  ["l_hmtp", "l_htoe"],
+  ["r_scap", "r_shoulder"],
+  ["r_shoulder", "r_elbow"],
+  ["r_elbow", "r_wrist"],
+  ["r_wrist", "r_fmcp"],
+  ["r_fmcp", "r_ftoe"],
+  ["r_hip", "r_knee"],
+  ["r_knee", "r_hock"],
+  ["r_hock", "r_hmtp"],
+  ["r_hmtp", "r_htoe"]
+ ],
+ "foot_keypoints": ["l_ftoe", "r_ftoe", "l_htoe", "r_htoe", "l_fmcp", "r_fmcp", "l_hmtp", "r_hmtp"],
+ "default_limits": [
+  [-30, 30],
+  [-10, 10],
+  [-15, 15]
+ ],
+ "joint_limits": [
+  {
+   "match": "^root$",
+   "limits": null
+  },
+  {
+   "match": "^Cat_Spine_",
+   "limits": [
+    [-22, 22],
+    [-10, 10],
+    [-15, 15]
+   ]
+  },
+  {
+   "match": "^Cat_Tail_",
+   "limits": [
+    [-25, 25],
+    [-10, 10],
+    [-25, 25]
+   ]
+  },
+  {
+   "match": "^Cat_(L_|R_)?Pelvis$",
+   "limits": [
+    [-35, 40],
+    [-15, 15],
+    [-20, 20]
+   ]
+  },
+  {
+   "match": "^Cat_(L_|R_)?Neck_01$",
+   "limits": [
+    [-45, 50],
+    [-25, 25],
+    [-30, 30]
+   ]
+  },
+  {
+   "match": "^Cat_(L_|R_)?Neck_02$",
+   "limits": [
+    [-40, 45],
+    [-20, 20],
+    [-25, 25]
+   ]
+  },
+  {
+   "match": "^Cat_(L_|R_)?Head$",
+   "limits": [
+    [-55, 40],
+    [-30, 30],
+    [-30, 30]
+   ]
+  },
+  {
+   "match": "^Cat_(L_|R_)?Ear$",
+   "limits": [
+    [-25, 25],
+    [-20, 20],
+    [-20, 20]
+   ]
+  },
+  {
+   "match": "^Cat_(L_|R_)?Scapula$",
+   "limits": [
+    [-40, 55],
+    [-10, 10],
+    [-12, 12]
+   ]
+  },
+  {
+   "match": "^Cat_(L_|R_)?UpperArm$",
+   "limits": [
+    [-75, 60],
+    [-20, 20],
+    [-25, 25]
+   ]
+  },
+  {
+   "match": "^Cat_(L_|R_)?Forearm$",
+   "limits": [
+    [-110, 20],
+    [-12, 12],
+    [-15, 15]
+   ]
+  },
+  {
+   "match": "^Cat_(L_|R_)?ForePaw$",
+   "limits": [
+    [-60, 70],
+    [-10, 10],
+    [-15, 15]
+   ]
+  },
+  {
+   "match": "^Cat_(L_|R_)?ForeToes$",
+   "limits": [
+    [-25, 90],
+    [-5, 5],
+    [-5, 5]
+   ]
+  },
+  {
+   "match": "^Cat_(L_|R_)?Thigh$",
+   "limits": [
+    [-70, 70],
+    [-20, 20],
+    [-25, 25]
+   ]
+  },
+  {
+   "match": "^Cat_(L_|R_)?Shin$",
+   "limits": [
+    [-110, 25],
+    [-12, 12],
+    [-15, 15]
+   ]
+  },
+  {
+   "match": "^Cat_(L_|R_)?HindPaw$",
+   "limits": [
+    [-55, 75],
+    [-10, 10],
+    [-12, 12]
+   ]
+  },
+  {
+   "match": "^Cat_(L_|R_)?HindToes$",
+   "limits": [
+    [-30, 80],
+    [-5, 5],
+    [-5, 5]
+   ]
+  }
+ ],
+ "helper_bones": [
+  {
+   "match": "ForeToeMid$",
+   "source": "ForeToes",
+   "factor": 0.5
+  },
+  {
+   "match": "WristMid$",
+   "source": "ForePaw",
+   "factor": 0.5
+  },
+  {
+   "match": "HindToeMid$",
+   "source": "HindToes",
+   "factor": 0.5
+  },
+  {
+   "match": "HockMid$",
+   "source": "HindPaw",
+   "factor": 0.5
+  }
+ ],
+ "smooth_chains": [
+  {
+   "match": "^Cat_Tail_\\d+$",
+   "amp_deg": [22, 28]
+  }
+ ],
+ "start_frame": {
+  "panel_width": 1536,
+  "panel_height": 1024,
+  "tilt_deg": 8.0,
+  "ortho_width_m": 3.0,
+  "aim_height_m": 0.48
+ },
+ "render": {
+  "resolution": 448,
+  "samples": 1500,
+  "workers": 3
+ },
+ "train": {
+  "steps": 6000,
+  "batch": 16,
+  "lr": 0.001,
+  "max_deform": 0.02,
+  "backbone": "weights/dinov2-base"
+ },
+ "fit": {
+  "iters": 1500,
+  "dense_iters": 1500,
+  "w_dense": 0.5,
+  "w_smooth": 200.0,
+  "front_drift": true
+ },
+ "video": {
+  "layout": "tb",
+  "fps": 24
+ }
+}

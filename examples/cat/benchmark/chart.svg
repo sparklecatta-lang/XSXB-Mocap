@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 280" width="640" height="280" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="12">
+<style>.bg{fill:#fcfcfb}.t1{fill:#0b0b0b}.t2{fill:#52514e}.g{stroke:#e4e3de}.s1{fill:#2a78d6}.s2{fill:#eb6834}@media (prefers-color-scheme:dark){.bg{fill:#1a1a19}.t1{fill:#f0efec}.t2{fill:#c3c2b7}.g{stroke:#383835}.s1{fill:#3987e5}.s2{fill:#d95926}}</style>
+<rect class="bg" width="640" height="280" rx="8"/>
+<text class="t1" x="16" y="24" font-size="14" font-weight="600">3D keypoint error on a synthetic walk (cm, lower is better)</text>
+<rect class="s2" x="16" y="36" width="10" height="10" rx="2"/><text class="t2" x="31" y="45">Triangulate, then fit (original)</text>
+<rect class="s1" x="253.8" y="36" width="10" height="10" rx="2"/><text class="t2" x="268.8" y="45">Ours: 2D + surface correspondences</text>
+<line class="g" x1="120.0" x2="120.0" y1="60" y2="254"/><text class="t2" x="120.0" y="268" text-anchor="middle">0</text>
+<line class="g" x1="196.7" x2="196.7" y1="60" y2="254"/><text class="t2" x="196.7" y="268" text-anchor="middle">1</text>
+<line class="g" x1="273.3" x2="273.3" y1="60" y2="254"/><text class="t2" x="273.3" y="268" text-anchor="middle">2</text>
+<line class="g" x1="350.0" x2="350.0" y1="60" y2="254"/><text class="t2" x="350.0" y="268" text-anchor="middle">3</text>
+<line class="g" x1="426.7" x2="426.7" y1="60" y2="254"/><text class="t2" x="426.7" y="268" text-anchor="middle">4</text>
+<line class="g" x1="503.3" x2="503.3" y1="60" y2="254"/><text class="t2" x="503.3" y="268" text-anchor="middle">5</text>
+<line class="g" x1="580.0" x2="580.0" y1="60" y2="254"/><text class="t2" x="580.0" y="268" text-anchor="middle">6</text>
+<text class="t1" x="110" y="88.0" text-anchor="end">All keypoints</text>
+<path class="s2" d="M120,64 h332.0 a4,4 0 0 1 4,4 v10 a4,4 0 0 1 -4,4 h-332.0 z"><title>triangulate: 4.38 cm</title></path>
+<text class="t1" x="462.0" y="77">4.38</text>
+<path class="s1" d="M120,86 h274.1 a4,4 0 0 1 4,4 v10 a4,4 0 0 1 -4,4 h-274.1 z"><title>ours: 3.63 cm</title></path>
+<text class="t1" x="404.1" y="99">3.63</text>
+<text class="t1" x="110" y="150.0" text-anchor="end">Limbs</text>
+<path class="s2" d="M120,126 h401.3 a4,4 0 0 1 4,4 v10 a4,4 0 0 1 -4,4 h-401.3 z"><title>triangulate: 5.29 cm</title></path>
+<text class="t1" x="531.3" y="139">5.29</text>
+<path class="s1" d="M120,148 h334.3 a4,4 0 0 1 4,4 v10 a4,4 0 0 1 -4,4 h-334.3 z"><title>ours: 4.41 cm</title></path>
+<text class="t1" x="464.3" y="161">4.41</text>
+<text class="t1" x="110" y="212.0" text-anchor="end">Tail</text>
+<path class="s2" d="M120,188 h271.7 a4,4 0 0 1 4,4 v10 a4,4 0 0 1 -4,4 h-271.7 z"><title>triangulate: 3.60 cm</title></path>
+<text class="t1" x="401.7" y="201">3.60</text>
+<path class="s1" d="M120,210 h215.3 a4,4 0 0 1 4,4 v10 a4,4 0 0 1 -4,4 h-215.3 z"><title>ours: 2.86 cm</title></path>
+<text class="t1" x="345.3" y="223">2.86</text>
+</svg>

@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>QuadMocap</title>
+<style>
+:root{--bg:#f6f6f4;--card:#fff;--fg:#1d1d1b;--mut:#6b6b66;--line:#e2e2dc;--acc:#2f6fdb;--ok:#2a8a4a;--warn:#b7791f;--err:#c0392b;--code:#f0f0ec}
+@media (prefers-color-scheme:dark){:root{--bg:#161615;--card:#1f1f1d;--fg:#ececea;--mut:#9a9a94;--line:#33332f;--acc:#6b9cff;--ok:#4cc27a;--warn:#e0a84a;--err:#ff6b5b;--code:#262624}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif}
+header{display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid var(--line);background:var(--card);position:sticky;top:0;z-index:5}
+header h1{font-size:16px;margin:0}
+header .sp{flex:1}
+.wrap{display:grid;grid-template-columns:220px 1fr;gap:16px;padding:16px;max-width:1400px;margin:0 auto 280px}
+@media (max-width:800px){.wrap{grid-template-columns:1fr}}
+aside .card{position:sticky;top:64px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:14px}
+.card h2{font-size:15px;margin:0 0 8px;display:flex;align-items:center;gap:8px}
+.num{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--code);font-size:12px;font-weight:600}
+.done .num{background:var(--ok);color:#fff}
+.mut{color:var(--mut)}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:6px 0}
+button{font:inherit;padding:6px 12px;border-radius:7px;border:1px solid var(--line);background:var(--code);color:var(--fg);cursor:pointer}
+button.pri{background:var(--acc);border-color:var(--acc);color:#fff}
+button:disabled{opacity:.45;cursor:not-allowed}
+input,select,textarea{font:inherit;padding:5px 8px;border-radius:6px;border:1px solid var(--line);background:var(--bg);color:var(--fg)}
+input[type=number]{width:90px}
+textarea{width:100%;min-height:340px;font:12px/1.4 ui-monospace,Consolas,monospace}
+.plist a{display:block;padding:6px 8px;border-radius:6px;color:var(--fg);text-decoration:none;overflow:hidden;text-overflow:ellipsis}
+.plist a.sel{background:var(--code);font-weight:600}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:2px 12px;font-size:13px}
+.kv span:nth-child(odd){color:var(--mut)}
+img.thumb{max-width:100%;max-height:360px;border-radius:6px;border:1px solid var(--line)}
+video{max-width:100%;max-height:560px;border-radius:6px;background:#000}
+.vid{border-top:1px solid var(--line);padding-top:10px;margin-top:10px}
+.warn{color:var(--warn)} .err{color:var(--err)} .ok{color:var(--ok)}
+#job{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);padding:8px 16px;z-index:6;display:none}
+#job .bar{height:8px;background:var(--code);border-radius:4px;overflow:hidden;margin:6px 0}
+#job .bar div{height:100%;background:var(--acc);width:0;transition:width .4s}
+#log{height:150px;overflow:auto;margin:0;background:var(--code);padding:6px 8px;border-radius:6px;font:12px/1.35 ui-monospace,Consolas,monospace;white-space:pre-wrap}
+details summary{cursor:pointer;color:var(--acc)}
+code{background:var(--code);padding:1px 5px;border-radius:4px}
+a{color:var(--acc)}
+</style>
+</head>
+<body>
+<header>
+  <h1>QuadMocap</h1><span class="mut" data-t="tagline"></span><span class="sp"></span>
+  <button id="langBtn"></button><button id="setBtn" data-t="settings"></button>
+</header>
+<div class="wrap">
+  <aside><div class="card">
+    <h2 data-t="projects"></h2>
+    <div class="plist" id="plist"></div>
+    <hr style="border:0;border-top:1px solid var(--line)">
+    <div class="row"><input id="newName" placeholder="name" style="width:100%"></div>
+    <div class="row"><select id="newEx" style="width:100%"></select></div>
+    <div class="row"><button class="pri" id="newBtn" data-t="create"></button></div>
+  </div></aside>
+  <main id="main"></main>
+</div>
+<div id="job">
+  <div class="row" style="margin:0"><b id="jobTitle"></b><span class="mut" id="jobStage"></span><span class="sp" style="flex:1"></span>
+    <span id="jobPct"></span><button id="jobCancel" data-t="cancel"></button><button id="jobHide" data-t="hide"></button></div>
+  <div class="bar"><div id="jobBar"></div></div>
+  <pre id="log"></pre>
+</div>
+<script>
+const T={
+ zh:{tagline:"四足 rig 视频动作捕捉",settings:"设置",projects:"项目",create:"新建",cancel:"取消",hide:"收起",lang:"English",
+  blank:"空项目",fromEx:"从示例复制：",s1:"导入 rig",s1d:"上传绑好骨的四足模型（.blend / .fbx / .glb）。会清理场景、导出骨骼和蒙皮，没有配置时按骨名自动生成草稿配置。",
+  regen:"重新生成配置草稿",upload:"上传并导入",reprep:"重新处理当前 rig",cfg:"rig 配置",cfgd:"骨名、关键点、关节限制、辅助骨、朝向都在这里。改完保存；改了 armature/mesh 要重新导入。",
+  save:"保存",saved:"已保存",s2:"生成起始帧",s2d:"上=正面，下=左侧面，同一正交比例。把这张图作为首帧交给视频模型（如 Seedance），提示里写明上下画面完全同步。",
+  run:"运行",download:"下载",s3:"渲染训练数据",s3d:"在关节限制内随机摆姿，双视角渲染 RGB + 表面坐标图 + 关键点标签。会覆盖已有数据。",
+  samples:"组数",workers:"并行 Blender",s4:"训练检测头",s4d:"DINOv2 主干冻结，只训练热力图 + 表面坐标头。",steps:"步数",
+  s5:"视频：检测 + 拟合 → 预览 → 导出",s5d:"视频须是上下两格：上=正面，下=侧面，由第 2 步的起始帧生成。",uploadV:"上传视频",
+  detect:"检测 + 拟合",preview:"预览对比",export:"导出 FBX / .blend",mode:"方法",ours:"我们的（2D + 表面对应）",tri:"原视频方式（三角化）",
+  del:"删除",have:"已有",none:"无",need:"需要先完成前面的步骤",resid:"关节残差中位数 px",front:"正面",side:"侧面",
+  blender:"Blender 路径",noBlender:"没找到 Blender，请在设置里填写 blender.exe 路径。",confirmDel:"确定删除？",evalTxt:"合成测试集误差 px（均值/中位数）",
+  overlay:"检测叠加",compare:"左：原视频 右：拟合结果",kps:"关键点",verts:"顶点",bones:"骨骼",ref:"参考动作",startHint:"首帧图",
+  jobDone:"完成",jobErr:"失败",busy:"有任务在跑"},
+ en:{tagline:"video motion capture for rigged quadrupeds",settings:"Settings",projects:"Projects",create:"Create",cancel:"Cancel",hide:"Hide",lang:"中文",
+  blank:"Empty project",fromEx:"Copy example: ",s1:"Import rig",s1d:"Upload a rigged quadruped (.blend / .fbx / .glb). The scene is cleaned, bones and skin weights exported; a draft config is guessed from bone names if none exists.",
+  regen:"Regenerate config draft",upload:"Upload & import",reprep:"Re-process current rig",cfg:"Rig config",cfgd:"Bone names, keypoints, joint limits, helper bones and orientation live here. Re-import after changing armature/mesh.",
+  save:"Save",saved:"Saved",s2:"Start frame",s2d:"Top = front view, bottom = left side, same ortho scale. Give this image to the video model (e.g. Seedance) as the first frame; ask for both panels to stay in sync.",
+  run:"Run",download:"Download",s3:"Render training data",s3d:"Random poses inside the joint limits, two views each: RGB + surface-coordinate map + keypoint labels. Replaces existing data.",
+  samples:"Samples",workers:"Blender workers",s4:"Train detector head",s4d:"Frozen DINOv2 backbone; only the heatmap + surface-coordinate head is trained.",steps:"Steps",
+  s5:"Videos: detect + fit → preview → export",s5d:"Two stacked panels: top = front, bottom = side, generated from the step-2 start frame.",uploadV:"Upload video",
+  detect:"Detect + fit",preview:"Preview",export:"Export FBX / .blend",mode:"Method",ours:"Ours (2D + surface correspondences)",tri:"Original (triangulate)",
+  del:"Delete",have:"have",none:"none",need:"finish the earlier steps first",resid:"Joint residual median px",front:"front",side:"side",
+  blender:"Blender path",noBlender:"Blender not found. Set the path to blender.exe in Settings.",confirmDel:"Delete?",evalTxt:"Synthetic test error px (mean/median)",
+  overlay:"Detections",compare:"Left: source, right: fitted rig",kps:"Keypoints",verts:"Vertices",bones:"Bones",ref:"Reference poses",startHint:"Start frame",
+  jobDone:"done",jobErr:"failed",busy:"job running"}};
+let L=localStorage.getItem("qm_lang")||"zh";
+const t=k=>T[L][k]||k;
+const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+let cur=localStorage.getItem("qm_proj")||"", P=null, settings=null, job=null, jobNext=0, poll=null;
+
+async function api(path,opt={}){
+  const r=await fetch(path,opt); let j=null; try{j=await r.json()}catch(e){}
+  if(!r.ok) throw new Error((j&&j.detail)||r.statusText); return j;
+}
+const post=(p,b)=>api(p,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b||{})});
+function applyLang(){document.querySelectorAll("[data-t]").forEach(e=>e.textContent=t(e.dataset.t));$("#langBtn").textContent=t("lang");document.documentElement.lang=L}
+$("#langBtn").onclick=()=>{L=L==="zh"?"en":"zh";localStorage.setItem("qm_lang",L);applyLang();render()};
+
+async function loadSettings(){settings=await api("/api/settings");
+  $("#newEx").innerHTML=`<option value="">${t("blank")}</option>`+settings.examples.map(e=>`<option value="${e}">${t("fromEx")}${e}</option>`).join("")}
+$("#setBtn").onclick=async()=>{const v=prompt(t("blender"),settings.blender||"");if(v===null)return;settings=await post("/api/settings",{blender:v});render()};
+
+async function loadProjects(){
+  const ps=await api("/api/projects");
+  $("#plist").innerHTML=ps.map(p=>`<a href="#" data-p="${p.name}" class="${p.name===cur?"sel":""}">${esc(p.name)}${p.busy?" ⏳":""}</a>`).join("")||`<span class="mut">—</span>`;
+  $("#plist").querySelectorAll("a").forEach(a=>a.onclick=e=>{e.preventDefault();cur=a.dataset.p;localStorage.setItem("qm_proj",cur);refresh()});
+  if(!ps.find(p=>p.name===cur)) cur=ps.length?ps[0].name:"";
+}
+$("#newBtn").onclick=async()=>{
+  const name=$("#newName").value.trim()||($("#newEx").value||"rig");
+  try{const r=await post("/api/projects",{name,example:$("#newEx").value||null});cur=r.name;localStorage.setItem("qm_proj",cur);$("#newName").value="";
+    if(r.job) watch(r.job); refresh()}catch(e){alert(e.message)}
+};
+
+async function refresh(){await loadProjects(); P=cur?await api(`/api/projects/${cur}`).catch(()=>null):null; render()}
+
+const f=(rel)=>`/files/${cur}/${rel}?v=${Date.now()}`;
+function step(n,key,done,body){return `<div class="card ${done?"done":""}"><h2><span class="num">${done?"✓":n}</span>${t(key)}</h2><div class="mut">${t(key+"d")}</div>${body}</div>`}
+
+function render(){
+  const m=$("#main");
+  if(!P){m.innerHTML=`<div class="card mut">${t("blank")} → ${t("create")}</div>`;return}
+  const busy=P.busy||(job&&["queued","running"].includes(job.status)&&job.project===cur);
+  const dis=busy?"disabled":"";
+  let h="";
+  if(settings&&!settings.blender) h+=`<div class="card err">${t("noBlender")}</div>`;
+  // 1 rig
+  const rig=P.rig?`<div class="kv" style="margin-top:8px"><span>armature</span><span>${esc(P.rig.armature)}</span><span>mesh</span><span>${esc(P.rig.mesh)}</span>
+    <span>${t("verts")}</span><span>${P.rig.verts}</span><span>${t("bones")}</span><span>${P.rig.bones}</span><span>${t("kps")}</span><span>${P.keypoints??"-"}</span>
+    <span>${t("ref")}</span><span>${P.ref_poses?t("have"):t("none")}</span></div>`:"";
+  h+=step(1,"s1",P.prepped,`<div class="row"><input type="file" id="rigFile" accept=".blend,.fbx,.glb,.gltf">
+    <label><input type="checkbox" id="regen"> ${t("regen")}</label><button class="pri" id="rigBtn" ${dis}>${t("upload")}</button>
+    ${P.source?`<button id="reprep" ${dis}>${t("reprep")}</button>`:""}</div>${rig}
+    ${P.config_error?`<div class="err">${esc(P.config_error)}</div>`:""}
+    ${(P.config_warnings||[]).length?`<div class="warn">${P.config_warnings.map(esc).join("<br>")}</div>`:""}
+    ${P.config?`<details style="margin-top:8px" id="cfgDet"><summary>${t("cfg")}</summary><div class="mut">${t("cfgd")}</div>
+      <textarea id="cfgText" spellcheck="false"></textarea><div class="row"><button class="pri" id="cfgSave">${t("save")}</button><span id="cfgMsg"></span></div></details>`:""}`);
+  // 2 start frame
+  const ok1=P.prepped&&P.config;
+  h+=step(2,"s2",P.start_frame,`<div class="row"><button class="pri" id="sfBtn" ${ok1&&!busy?"":"disabled"}>${t("run")}</button>
+    ${P.start_frame?`<a href="${f("start_frame/start_frame.png")}" download="start_frame.png">${t("download")} start_frame.png</a> · <a href="${f("start_frame/cameras.json")}" download>cameras.json</a>`:""}</div>
+    ${P.start_frame?`<img class="thumb" src="${f("start_frame/start_frame.png")}" alt="${t("startHint")}">`:""}`);
+  // 3 render
+  h+=step(3,"s3",P.samples>0,`<div class="row">${t("samples")} <input type="number" id="nSamp" value="${P.render_samples||1500}" min="1">
+    ${t("workers")} <input type="number" id="nWork" value="3" min="1" max="8"><button class="pri" id="renBtn" ${ok1&&!busy?"":"disabled"}>${t("run")}</button>
+    <span class="mut">${t("have")}: ${P.samples}</span></div>`);
+  // 4 train
+  const ev=P.eval?`<div class="mut">${t("evalTxt")}: ${P.eval.px_mean.toFixed(1)} / ${P.eval.px_median.toFixed(1)} · PCK@10px ${(P.eval.pck_10px*100).toFixed(0)}%</div>`:"";
+  h+=step(4,"s4",P.model,`<div class="row">${t("steps")} <input type="number" id="nSteps" value="${P.train_steps||6000}" min="10">
+    <button class="pri" id="trBtn" ${P.samples>0&&!busy?"":"disabled"}>${t("run")}</button>
+    ${P.model?`<a href="${f("model/head.pt")}" download>head.pt</a>`:""}</div>${ev}`);
+  // 5 videos
+  const okv=P.model&&P.start_frame&&!busy;
+  let vids=P.videos.map(v=>{
+    const r=v.report?`<span class="mut">${t("resid")}: ${t("front")} ${v.report.kp_px_median.front.toFixed(1)} · ${t("side")} ${v.report.kp_px_median.side.toFixed(1)} (${v.report.mode})</span>`:"";
+    return `<div class="vid" data-v="${v.id}"><div class="row"><b>${esc(v.id)}</b><span class="mut">${v.size?v.size.join("×"):""} · ${v.frames||"?"}f</span>
+      <select class="vmode"><option value="ours">${t("ours")}</option><option value="triangulate">${t("tri")}</option></select>
+      <button class="pri vdet" ${okv?"":"disabled"}>${t("detect")}</button>
+      <button class="vprev" ${v.fitted&&!busy?"":"disabled"}>${t("preview")}</button>
+      <button class="vexp" ${v.fitted&&!busy?"":"disabled"}>${t("export")}</button>
+      <button class="vdel" ${dis}>${t("del")}</button></div>
+      <div class="row">${r} ${v.blend?`<a href="${f(`videos/${v.id}/fit/mocap.blend`)}" download>mocap.blend</a>`:""} ${v.fbx?`<a href="${f(`videos/${v.id}/fit/mocap.fbx`)}" download>mocap.fbx</a>`:""}</div>
+      ${v.compare?`<div class="mut">${t("compare")}</div><video controls loop muted src="${f(`videos/${v.id}/fit/compare.mp4`)}"></video>`:
+        `<video controls loop muted src="${f(`videos/${v.id}/source.mp4`)}" style="max-height:360px"></video>`}
+      ${v.overlay?`<details><summary>${t("overlay")}</summary><video controls loop muted src="${f(`videos/${v.id}/det/overlay.mp4`)}"></video></details>`:""}</div>`}).join("");
+  h+=step(5,"s5",P.videos.some(v=>v.fitted),`<div class="row"><input type="file" id="vidFile" accept="video/*"><button class="pri" id="vidBtn" ${dis}>${t("uploadV")}</button>
+    ${okv?"":`<span class="mut">(${busy?t("busy"):t("need")})</span>`}</div>${vids}`);
+  h+=`<div class="row"><button id="delProj" ${dis}>${t("del")} ${esc(cur)}</button></div>`;
+  m.innerHTML=h; bind();
+}
+
+async function act(fn){try{const r=await fn();if(r&&r.job)watch(r.job);await refresh()}catch(e){alert(e.message)}}
+async function upload(url,file,extra={}){const fd=new FormData();fd.append("file",file);for(const k in extra)fd.append(k,extra[k]);
+  return api(url,{method:"POST",body:fd})}
+function bind(){
+  const on=(id,fn)=>{const e=$(id);if(e)e.onclick=fn};
+  on("#rigBtn",()=>{const fl=$("#rigFile").files[0];if(!fl)return;act(()=>upload(`/api/projects/${cur}/rig`,fl,{reset_config:$("#regen").checked?"1":"0"}))});
+  on("#reprep",()=>act(()=>post(`/api/projects/${cur}/run/prep`)));
+  on("#sfBtn",()=>act(()=>post(`/api/projects/${cur}/run/start_frame`)));
+  on("#renBtn",()=>act(()=>post(`/api/projects/${cur}/run/render`,{samples:+$("#nSamp").value,workers:+$("#nWork").value})));
+  on("#trBtn",()=>act(()=>post(`/api/projects/${cur}/run/train`,{steps:+$("#nSteps").value})));
+  on("#vidBtn",()=>{const fl=$("#vidFile").files[0];if(!fl)return;act(()=>upload(`/api/projects/${cur}/videos`,fl))});
+  on("#delProj",()=>{if(confirm(t("confirmDel")+" "+cur))act(()=>api(`/api/projects/${cur}`,{method:"DELETE"}))});
+  document.querySelectorAll(".vid").forEach(d=>{const v=d.dataset.v,q=s=>d.querySelector(s);
+    q(".vdet").onclick=()=>act(()=>post(`/api/projects/${cur}/videos/${v}/run/detect_fit`,{mode:q(".vmode").value}));
+    q(".vprev").onclick=()=>act(()=>post(`/api/projects/${cur}/videos/${v}/run/preview`));
+    q(".vexp").onclick=()=>act(()=>post(`/api/projects/${cur}/videos/${v}/run/export`));
+    q(".vdel").onclick=()=>{if(confirm(t("confirmDel")+" "+v))act(()=>api(`/api/projects/${cur}/videos/${v}`,{method:"DELETE"}))};});
+  const det=$("#cfgDet");
+  if(det) det.ontoggle=async()=>{if(det.open&&!$("#cfgText").value){const c=await api(`/api/projects/${cur}/config`);$("#cfgText").value=c.text}};
+  on("#cfgSave",async()=>{try{const r=await api(`/api/projects/${cur}/config`,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({text:$("#cfgText").value})});
+    $("#cfgMsg").innerHTML=r.warnings.length?`<span class="warn">${r.warnings.map(esc).join("<br>")}</span>`:`<span class="ok">${t("saved")}</span>`}catch(e){$("#cfgMsg").innerHTML=`<span class="err">${esc(e.message)}</span>`}});
+}
+
+function watch(id){job={id,status:"queued"};jobNext=0;$("#log").textContent="";$("#job").style.display="block";clearInterval(poll);poll=setInterval(tick,1000);tick()}
+async function tick(){
+  let j; try{j=await api(`/api/jobs/${job.id}?since=${jobNext}`)}catch(e){return}
+  const wasActive=["queued","running"].includes(job.status); job=j; jobNext=j.next;
+  $("#jobTitle").textContent=`${j.project} · ${j.title}`;
+  $("#jobStage").textContent=` ${j.stage} (${j.stage_index+1}/${j.stages}) · ${j.elapsed}s`;
+  $("#jobPct").innerHTML=j.status==="done"?`<span class="ok">${t("jobDone")}</span>`:j.status==="error"||j.status==="cancelled"?`<span class="err">${t("jobErr")}: ${esc(j.error)}</span>`:`${(j.progress*100).toFixed(1)}%`;
+  $("#jobBar").style.width=(j.progress*100)+"%";
+  if(j.lines.length){const lg=$("#log");const stick=lg.scrollTop+lg.clientHeight>=lg.scrollHeight-20;lg.textContent+=j.lines.join("\n")+"\n";
+    if(lg.textContent.length>200000)lg.textContent=lg.textContent.slice(-150000); if(stick)lg.scrollTop=lg.scrollHeight}
+  $("#jobCancel").disabled=!["queued","running"].includes(j.status);
+  if(!["queued","running"].includes(j.status)){clearInterval(poll); if(wasActive) refresh()}
+}
+$("#jobCancel").onclick=()=>post(`/api/jobs/${job.id}/cancel`);
+$("#jobHide").onclick=()=>$("#job").style.display="none";
+
+(async()=>{applyLang();await loadSettings();await refresh();
+  const js=await api("/api/jobs");const a=js.find(j=>["queued","running"].includes(j.status));if(a)watch(a.id)})();
+</script>
+</body>
+</html>

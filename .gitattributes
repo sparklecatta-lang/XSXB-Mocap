@@ -1,0 +1,7 @@
+* text=auto
+*.bat text eol=crlf
+*.blend binary
+*.pt binary
+*.npz binary
+*.mp4 binary
+*.fbx binary
