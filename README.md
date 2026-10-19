@@ -82,7 +82,8 @@ If Blender is not found automatically, set its path under **Settings**. Each ste
 
 1. **Import rig** — upload a `.blend` / `.fbx` / `.glb` with one armature and its skinned mesh(es). The scene is cleaned
    (other objects removed, transforms applied, meshes joined) and a **draft config** is guessed from the bone names
-   (left/right tokens, orientation, keypoints at bone heads and chain ends, feet). Review it in the config editor —
+   (left/right tokens, orientation, keypoints at bone heads and chain ends, feet). The import also checks that the mesh
+   follows the exported skinning (the same check runs before every render and export). Review the config in the config editor —
    especially joint limits; the defaults are generic. If the file has an animation (e.g. a walk cycle), it is used as a
    pose prior for the synthetic data.
 2. **Start frame** — renders the start image: top = front view, bottom = left side, same orthographic scale, plus
@@ -159,8 +160,7 @@ The example result is **not perfect**:
 - **Tail** is the weakest part (largest residuals); in the front panel the tail sits too high.
 - **Airborne frames** of the run float slightly too high.
 - **No foot locking** yet, so feet can slide during contact.
-- During the run (about frames 50–110) the fitted body **turns in the front view** while the source cat stays frontal.
-  The video model's front panel also drifts (≈5 % zoom); the drift correction absorbs part of it.
+- The video model's front panel drifts (≈5 % zoom, moves toward the camera); the drift correction absorbs part of it.
 - The detector was trained on 1500 synthetic samples only; synthetic-test error is 9.8 px mean / 4.2 px median
   (448 px crops), worst on tail tip and hind toes.
 - Generic-rig support has been tested on the cat and on a procedural blocky test rig

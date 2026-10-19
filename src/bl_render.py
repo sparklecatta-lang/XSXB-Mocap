@@ -9,6 +9,7 @@ from mathutils import Matrix, Euler, Vector
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import qconfig as Q
+from blcheck import skin_error, require
 
 argv = sys.argv[sys.argv.index("--") + 1:]
 PROJECT, START, COUNT, SEED = argv[0], int(argv[1]), int(argv[2]), int(argv[3])
@@ -231,6 +232,8 @@ def render_dense(path):
 labels = []
 for s in range(START, START + COUNT):
     e = sample_pose(); apply_pose(e)
+    if s == START:
+        require(skin_error(arm, me, PATHS["rig"]), f"sample {s}")
     V = deformed_verts()
     frac, rmax, rmin = deform_metric(V)
     rec = {"id": s, "euler": e.tolist(), "arm_rot": list(arm.rotation_euler), "deform": [frac, rmax, rmin]}

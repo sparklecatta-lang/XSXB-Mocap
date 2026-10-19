@@ -8,6 +8,7 @@ from mathutils import Matrix, Vector
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import qconfig as Q
+from blcheck import skin_error, require
 
 ARGS = sys.argv[sys.argv.index("--") + 1:]
 PROJECT = ARGS[0]
@@ -72,6 +73,8 @@ for m in meshes:
         if md.type != 'ARMATURE':
             print("REMOVED_MODIFIER", m.name, md.name, md.type)
             m.modifiers.remove(md)
+        elif md.use_deform_preserve_volume:              # the fitter uses linear blend skinning
+            md.use_deform_preserve_volume = False; print("DISABLED_PRESERVE_VOLUME", m.name, flush=True)
     if m.data.shape_keys:
         m.shape_key_clear()
 sc.frame_start = sc.frame_end = 1
@@ -93,6 +96,8 @@ if len(meshes) > 1:
         bpy.ops.object.join()
     print("JOINED_MESHES", flush=True)
 me = meshes[0]
+# the mesh must follow the armature object (the fitter moves/rotates the object): parent it, both are identity now
+me.parent = arm; me.parent_type = 'OBJECT'; me.matrix_parent_inverse = Matrix.Identity(4)
 bpy.context.view_layer.update()
 
 # --- 4. rest-position colour attribute (normalised 0..1 in the rest bbox)
@@ -207,6 +212,20 @@ if draft:
 elif cfg["armature"] != arm.name or cfg["mesh"] != me.name:
     raw = json.load(open(P["config"], encoding="utf-8")); raw["armature"], raw["mesh"] = arm.name, me.name
     Q.save(PROJECT, raw)
+
+# --- 7. self-check: with a random pose AND a moved/rotated armature object, Blender's deformed mesh must equal
+# linear blend skinning with the exported rest matrices + weights (what the fitter assumes)
+rng = np.random.default_rng(0)
+for pb in arm.pose.bones:
+    pb.rotation_euler = rng.uniform(-0.3, 0.3, 3)
+arm.rotation_mode = 'XYZ'; arm.rotation_euler = (0.2, -0.3, 0.5); arm.location = (0.3, -0.2, 0.1)
+bpy.context.view_layer.update()
+err = skin_error(arm, me, P["rig"])
+for pb in arm.pose.bones:
+    pb.matrix_basis = Matrix.Identity(4)
+arm.rotation_euler = (0, 0, 0); arm.location = (0, 0, 0)
+bpy.context.view_layer.update()
+require(err, "import")
 
 bpy.ops.wm.save_as_mainfile(filepath=P["clean"], compress=True)
 print("PREP_DONE", flush=True)

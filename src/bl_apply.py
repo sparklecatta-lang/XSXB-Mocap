@@ -8,6 +8,7 @@ from mathutils import Euler, Vector
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import qconfig as Q
+from blcheck import skin_error, require
 
 argv = sys.argv[sys.argv.index("--") + 1:]
 PROJECT, FD, MODE = argv[0], argv[1], argv[2]
@@ -37,6 +38,9 @@ for t in range(T):
     if fr % 20 == 0: print(f"PROGRESS {fr}/{T}", flush=True)
 sc.frame_start, sc.frame_end = 1, T
 sc.render.fps = fps
+for fr in sorted({1, (T + 1) // 2, T}):
+    sc.frame_set(fr)
+    require(skin_error(arm, me, Q.paths(PROJECT)["rig"]), f"frame {fr}")
 
 if MODE == "blend":
     bpy.ops.wm.save_as_mainfile(filepath=os.path.join(FD, "mocap.blend"), compress=True, copy=True)

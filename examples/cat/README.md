@@ -16,7 +16,7 @@ then go straight to the video step, or look at the shipped results.
 | `benchmark/` | Synthetic ground-truth comparison (ours vs triangulation), see below. |
 
 The result is **not perfect**: the tail is the weakest part and sits too high in the front view, airborne frames float a
-little, feet are not locked, and during the run the body turns in the front view. See the main README.
+little, and feet are not locked. See the main README.
 
 ## Benchmark
 
