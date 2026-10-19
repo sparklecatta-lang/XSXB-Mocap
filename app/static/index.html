@@ -72,8 +72,8 @@ const T={
   blank:"空项目",fromEx:"从示例复制：",s1:"导入 rig",s1d:"上传绑好骨的四足模型（.blend / .fbx / .glb）。会清理场景、导出骨骼和蒙皮，没有配置时按骨名自动生成草稿配置。",
   regen:"重新生成配置草稿",upload:"上传并导入",reprep:"重新处理当前 rig",cfg:"rig 配置",cfgd:"骨名、关键点、关节限制、辅助骨、朝向都在这里。改完保存；改了 armature/mesh 要重新导入。",
   save:"保存",saved:"已保存",s2:"生成起始帧",s2d:"上=正面，下=左侧面，同一正交比例。把这张图作为首帧交给视频模型（如 Seedance），提示里写明上下画面完全同步。",
-  run:"运行",download:"下载",s3:"渲染训练数据",s3d:"在关节限制内随机摆姿，双视角渲染 RGB + 表面坐标图 + 关键点标签。会覆盖已有数据。",
-  samples:"组数",workers:"并行 Blender",s4:"训练检测头",s4d:"DINOv2 主干冻结，只训练热力图 + 表面坐标头。",steps:"步数",
+  run:"运行",download:"下载",s3:"生成训练数据并训练",s3d:"先在关节限制内随机摆姿、双视角渲染（RGB + 表面坐标图 + 关键点标签），再训练检测头（DINOv2 主干冻结）。一次跑完；默认值就是推荐值，RTX 5060 Ti 上约 40 分钟。",
+  samples:"渲染组数",workers:"并行 Blender",steps:"训练步数",rec:"推荐",reuse:"复用已有训练数据，只重新训练",haveData:"已有训练数据",
   s5:"视频：检测 + 拟合 → 预览 → 导出",s5d:"视频须是上下两格：上=正面，下=侧面，由第 2 步的起始帧生成。",uploadV:"上传视频",
   detect:"检测 + 拟合",preview:"预览对比",export:"导出 FBX / .blend",mode:"方法",ours:"我们的（2D + 表面对应）",tri:"原视频方式（三角化）",
   del:"删除",have:"已有",none:"无",need:"需要先完成前面的步骤",resid:"关节残差中位数 px",front:"正面",side:"侧面",
@@ -84,8 +84,8 @@ const T={
   blank:"Empty project",fromEx:"Copy example: ",s1:"Import rig",s1d:"Upload a rigged quadruped (.blend / .fbx / .glb). The scene is cleaned, bones and skin weights exported; a draft config is guessed from bone names if none exists.",
   regen:"Regenerate config draft",upload:"Upload & import",reprep:"Re-process current rig",cfg:"Rig config",cfgd:"Bone names, keypoints, joint limits, helper bones and orientation live here. Re-import after changing armature/mesh.",
   save:"Save",saved:"Saved",s2:"Start frame",s2d:"Top = front view, bottom = left side, same ortho scale. Give this image to the video model (e.g. Seedance) as the first frame; ask for both panels to stay in sync.",
-  run:"Run",download:"Download",s3:"Render training data",s3d:"Random poses inside the joint limits, two views each: RGB + surface-coordinate map + keypoint labels. Replaces existing data.",
-  samples:"Samples",workers:"Blender workers",s4:"Train detector head",s4d:"Frozen DINOv2 backbone; only the heatmap + surface-coordinate head is trained.",steps:"Steps",
+  run:"Run",download:"Download",s3:"Training data + train",s3d:"Renders random poses inside the joint limits in two views (RGB + surface-coordinate map + keypoint labels), then trains the detector head on a frozen DINOv2 backbone. One run; the defaults are the recommended values (~40 min on an RTX 5060 Ti).",
+  samples:"Samples",workers:"Blender workers",steps:"Training steps",rec:"recommended",reuse:"Reuse existing training data, only retrain",haveData:"Training data",
   s5:"Videos: detect + fit → preview → export",s5d:"Two stacked panels: top = front, bottom = side, generated from the step-2 start frame.",uploadV:"Upload video",
   detect:"Detect + fit",preview:"Preview",export:"Export FBX / .blend",mode:"Method",ours:"Ours (2D + surface correspondences)",tri:"Original (triangulate)",
   del:"Delete",have:"have",none:"none",need:"finish the earlier steps first",resid:"Joint residual median px",front:"front",side:"side",
@@ -150,14 +150,15 @@ function render(){
   h+=step(2,"s2",P.start_frame,`<div class="row"><button class="pri" id="sfBtn" ${ok1&&!busy?"":"disabled"}>${t("run")}</button>
     ${P.start_frame?`<a href="${f("start_frame/start_frame.png")}" download="start_frame.png">${t("download")} start_frame.png</a> · <a href="${f("start_frame/cameras.json")}" download>cameras.json</a>`:""}</div>
     ${P.start_frame?`<img class="thumb" src="${f("start_frame/start_frame.png")}" alt="${t("startHint")}">`:""}`);
-  // 3 render
-  h+=step(3,"s3",P.samples>0,`<div class="row">${t("samples")} <input type="number" id="nSamp" value="${P.render_samples||1500}" min="1">
-    ${t("workers")} <input type="number" id="nWork" value="3" min="1" max="8"><button class="pri" id="renBtn" ${ok1&&!busy?"":"disabled"}>${t("run")}</button>
-    <span class="mut">${t("have")}: ${P.samples}</span></div>`);
-  // 4 train
+  // 3 data + train
   const ev=P.eval?`<div class="mut">${t("evalTxt")}: ${P.eval.px_mean.toFixed(1)} / ${P.eval.px_median.toFixed(1)} · PCK@10px ${(P.eval.pck_10px*100).toFixed(0)}%</div>`:"";
-  h+=step(4,"s4",P.model,`<div class="row">${t("steps")} <input type="number" id="nSteps" value="${P.train_steps||6000}" min="10">
-    <button class="pri" id="trBtn" ${P.samples>0&&!busy?"":"disabled"}>${t("run")}</button>
+  h+=step(3,"s3",P.model,`<div class="row">${t("samples")} <input type="number" id="nSamp" value="${P.render_samples||1500}" min="1">
+    ${t("workers")} <input type="number" id="nWork" value="3" min="1" max="8">
+    ${t("steps")} <input type="number" id="nSteps" value="${P.train_steps||6000}" min="10">
+    <span class="mut">(${t("rec")}: 1500 / 3 / 6000)</span></div>
+    <div class="row">${P.samples>0?`<label><input type="checkbox" id="reuse"> ${t("reuse")}</label>`:""}
+    <button class="pri" id="buildBtn" ${ok1&&!busy?"":"disabled"}>${t("run")}</button>
+    <span class="mut">${t("haveData")}: ${P.samples}</span>
     ${P.model?`<a href="${f("model/head.pt")}" download>head.pt</a>`:""}</div>${ev}`);
   // 5 videos
   const okv=P.model&&P.start_frame&&!busy;
@@ -173,7 +174,7 @@ function render(){
       ${v.compare?`<div class="mut">${t("compare")}</div><video controls loop muted src="${f(`videos/${v.id}/fit/compare.mp4`)}"></video>`:
         `<video controls loop muted src="${f(`videos/${v.id}/source.mp4`)}" style="max-height:360px"></video>`}
       ${v.overlay?`<details><summary>${t("overlay")}</summary><video controls loop muted src="${f(`videos/${v.id}/det/overlay.mp4`)}"></video></details>`:""}</div>`}).join("");
-  h+=step(5,"s5",P.videos.some(v=>v.fitted),`<div class="row"><input type="file" id="vidFile" accept="video/*"><button class="pri" id="vidBtn" ${dis}>${t("uploadV")}</button>
+  h+=step(4,"s5",P.videos.some(v=>v.fitted),`<div class="row"><input type="file" id="vidFile" accept="video/*"><button class="pri" id="vidBtn" ${dis}>${t("uploadV")}</button>
     ${okv?"":`<span class="mut">(${busy?t("busy"):t("need")})</span>`}</div>${vids}`);
   h+=`<div class="row"><button id="delProj" ${dis}>${t("del")} ${esc(cur)}</button></div>`;
   m.innerHTML=h; bind();
@@ -187,8 +188,8 @@ function bind(){
   on("#rigBtn",()=>{const fl=$("#rigFile").files[0];if(!fl)return;act(()=>upload(`/api/projects/${cur}/rig`,fl,{reset_config:$("#regen").checked?"1":"0"}))});
   on("#reprep",()=>act(()=>post(`/api/projects/${cur}/run/prep`)));
   on("#sfBtn",()=>act(()=>post(`/api/projects/${cur}/run/start_frame`)));
-  on("#renBtn",()=>act(()=>post(`/api/projects/${cur}/run/render`,{samples:+$("#nSamp").value,workers:+$("#nWork").value})));
-  on("#trBtn",()=>act(()=>post(`/api/projects/${cur}/run/train`,{steps:+$("#nSteps").value})));
+  on("#buildBtn",()=>act(()=>post(`/api/projects/${cur}/run/build`,{samples:+$("#nSamp").value,workers:+$("#nWork").value,
+    steps:+$("#nSteps").value,reuse_data:!!($("#reuse")&&$("#reuse").checked)})));
   on("#vidBtn",()=>{const fl=$("#vidFile").files[0];if(!fl)return;act(()=>upload(`/api/projects/${cur}/videos`,fl))});
   on("#delProj",()=>{if(confirm(t("confirmDel")+" "+cur))act(()=>api(`/api/projects/${cur}`,{method:"DELETE"}))});
   document.querySelectorAll(".vid").forEach(d=>{const v=d.dataset.v,q=s=>d.querySelector(s);

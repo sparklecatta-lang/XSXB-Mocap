@@ -221,7 +221,7 @@ def main():
             loss = l_hm + l_m + l_c * 5
             opt.zero_grad(set_to_none=True); loss.backward(); opt.step(); sched.step()
             step += 1
-            if step % 50 == 0:
+            if step % max(1, min(50, a.steps // 100)) == 0 or step == a.steps:
                 print(f"PROGRESS {step}/{a.steps}", flush=True)
             if step % 200 == 0:
                 print(f"step {step} loss {loss.item():.4f} hm {l_hm.item():.4f} mask {l_m.item():.4f} "

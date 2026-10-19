@@ -88,14 +88,15 @@ If Blender is not found automatically, set its path under **Settings**. Each ste
    pose prior for the synthetic data.
 2. **Start frame** — renders the start image: top = front view, bottom = left side, same orthographic scale, plus
    `cameras.json`. Give the image to an image-to-video model as the first frame.
-3. **Render training data** — random poses inside the joint limits, two views each: RGB, a rest-position map and
-   keypoint labels. ~0.5 s per sample per Blender process; 1500 samples is a good start.
-4. **Train** — frozen DINOv2 backbone, small convolutional head (6000 steps ≈ 30 min on an RTX 5060 Ti).
-5. **Upload video → Detect + fit → Preview → Export** — detection overlay, fitted-vs-source comparison video,
+3. **Training data + train** (one run) — random poses inside the joint limits rendered in two views (RGB, a
+   rest-position map, keypoint labels), then a small convolutional head is trained on a frozen DINOv2 backbone.
+   The defaults are the recommended values: 1500 samples, 3 Blender workers, 6000 steps (≈ 40 min on an RTX 5060 Ti).
+   Tick *reuse existing training data* to retrain only.
+4. **Upload video → Detect + fit → Preview → Export** — detection overlay, fitted-vs-source comparison video,
    `mocap.blend` and `mocap.fbx` (baked action, for Unreal / Unity / other DCCs).
 
 To try it without training: **New project → Copy example: cat**. It ships with a trained head, the start frame and the
-test video, so you can go straight to step 5.
+test video, so you can go straight to step 4.
 
 ### Making the video
 

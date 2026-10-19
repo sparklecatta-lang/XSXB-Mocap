@@ -347,30 +347,37 @@ def run_step(p: str, step: str, body: dict = None):
     if step == "start_frame":
         st = {"label": "start frame", "cmds": [blender(P["clean"], "--python", os.path.join(SRC, "bl_start_frame.py"), "--", d)]}
         return {"job": submit(p, "start_frame", [st]).id}
-    if step == "render":
+    if step in ("render", "train", "build"):
+        stages = []
         n = int(body.get("samples") or cfg["render"]["samples"]); w = max(1, int(body.get("workers") or cfg["render"]["workers"]))
-        if not body.get("append"):
-            shutil.rmtree(P["data"], ignore_errors=True)
-        os.makedirs(P["data"], exist_ok=True)
-        start = 0
-        for f in glob.glob(os.path.join(P["data"], "labels_*.json")):
-            lab = json.load(open(f)); start = max(start, max(r["id"] for r in lab["samples"]) + 1)
-        chunk = [n // w + (1 if k < n % w else 0) for k in range(w)]
-        cmds, s0 = [], start
-        for k, c in enumerate(chunk):
-            if c == 0: continue
-            cmds.append(blender(P["clean"], "--python", os.path.join(SRC, "bl_render.py"), "--", d, str(s0), str(c),
-                                str(1000 + s0)))
-            s0 += c
-        st = {"label": f"render {n} samples x 2 views", "cmds": cmds, "count": "SAMPLE ", "per_cmd": [c for c in chunk if c]}
-        return {"job": submit(p, "render", [st]).id}
-    if step == "train":
-        if not glob.glob(os.path.join(P["data"], "labels_*.json")): raise HTTPException(400, "render training data first")
-        args = ["--project", d]
-        if body.get("steps"): args += ["--steps", str(int(body["steps"]))]
-        st = {"label": "train", "cmds": [py("train.py", *args)]}
-        return {"job": submit(p, "train", [st]).id}
+        steps = int(body.get("steps") or cfg["train"]["steps"])
+        reuse = step == "train" or (step == "build" and body.get("reuse_data") and project_status(p)["samples"] > 0)
+        if not reuse:
+            stages.append(render_stage(d, n, w, append=bool(body.get("append"))))
+        if step != "render":
+            # weights ~ wall time: rendering ~0.5 s/sample/worker, training ~0.28 s/step on an RTX 5060 Ti
+            stages.append({"label": f"train {steps} steps", "weight": max(0.1, steps * 0.28 / max(1.0, n * 0.5 / w)),
+                           "cmds": [py("train.py", "--project", d, "--steps", str(steps))]})
+            if reuse and not glob.glob(os.path.join(P["data"], "labels_*.json")):
+                raise HTTPException(400, "no training data yet: untick 'reuse data'")
+        return {"job": submit(p, step, stages).id}
     raise HTTPException(404, "unknown step")
+
+
+def render_stage(d, n, w, append=False):
+    P = Q.paths(d)
+    if not append:
+        shutil.rmtree(P["data"], ignore_errors=True)
+    os.makedirs(P["data"], exist_ok=True)
+    start = 0
+    for f in glob.glob(os.path.join(P["data"], "labels_*.json")):
+        lab = json.load(open(f)); start = max(start, max(r["id"] for r in lab["samples"]) + 1)
+    chunk = [c for c in (n // w + (1 if k < n % w else 0) for k in range(w)) if c]
+    cmds, s0 = [], start
+    for c in chunk:
+        cmds.append(blender(P["clean"], "--python", os.path.join(SRC, "bl_render.py"), "--", d, str(s0), str(c), str(1000 + s0)))
+        s0 += c
+    return {"label": f"render {n} samples x 2 views", "cmds": cmds, "count": "SAMPLE ", "per_cmd": chunk}
 
 
 @app.post("/api/projects/{p}/videos")
