@@ -153,10 +153,54 @@ The 1500-sample training set (~850 MB) is not included; step 3 regenerates it.
 The cat model was generated with [Tripo](https://www.tripo3d.ai/) from photos of the author's own cat and rigged by hand.
 See [`examples/cat/README.md`](examples/cat/README.md) for its attribution.
 
+## Post-processing (suggestions)
+
+The fitter solves every frame of the video, so the raw action **jitters** from frame to frame even with its smoothness
+term. Treat `mocap.blend` / `mocap.fbx` as raw capture and clean it up before use. General approach:
+
+1. **Low-pass the rotations, not the Euler numbers.** Per pose bone: convert the rotation keys to quaternions, keep
+   them in one hemisphere (flip `q` when `dot(q[t], q[t-1]) < 0`), filter each component with a zero-phase low-pass
+   (e.g. Butterworth, `scipy.signal.filtfilt`, 2nd order, cutoff ≈ 4–6 Hz at 24 fps), renormalise, convert back to the
+   bone's rotation mode keeping Euler continuity. Filter the armature object's location/rotation separately with a lower
+   cutoff (≈ 2–3 Hz). Blender 4.0+ also has *Graph Editor → Key → Smooth → Butterworth Smooth* for quick manual work.
+2. **Lock feet during contact.** Find contact frames from the foot keypoints (low height and low speed for a few frames),
+   pin each foot to its average position there with IK, blend a few frames in and out, then bake.
+3. **Or smooth in the fit itself.** Raise `fit.w_smooth` in the project config (default 200) and re-run *Detect + fit*;
+   it trades a little reprojection accuracy for less jitter. Compare `fit_report.json` before and after.
+4. **Check against the video.** Re-render the comparison (*Preview*), and make sure fast motions (jumps, landings)
+   were not smeared — lower the cutoff only where needed.
+
+Example prompts for a coding agent (Claude Code, Codex, …), run in this repo:
+
+```text
+Open workspace/<project>/videos/<id>/fit/mocap.blend headless with Blender. The action on the armature was fitted per
+frame and jitters. Write a Blender Python script that, for every pose bone, converts the rotation keys to quaternions
+(keep hemisphere continuity), applies a zero-phase 2nd-order Butterworth low-pass (scipy filtfilt, cutoff 5 Hz at the
+scene fps) to each component, renormalises, converts back to the bone's rotation mode (XZY Euler, keep continuity) and
+rewrites one key per frame. Smooth the armature object's location and rotation with a 2.5 Hz cutoff. Do not change
+bone lengths or the rest pose. Save mocap_smooth.blend next to it, export mocap_smooth.fbx with the same FBX settings
+as src/bl_apply.py, and report the largest per-bone change in degrees.
+```
+
+```text
+Using workspace/<project>/videos/<id>/fit/fit.npz, src/rigtorch.py and the project's config.json, compute the world
+position of every foot keypoint per frame. Mark contact frames where the foot is below 2 cm and slower than
+0.15 m/s for at least 3 frames. In mocap_smooth.blend, pin each foot during its contacts with an IK constraint to a
+target empty at the contact's mean position, blend the constraint influence in and out over 3 frames, bake the result
+into a new action, and save mocap_clean.blend. List the contact ranges you found per foot.
+```
+
+```text
+Re-render the comparison for mocap_clean.blend with the start-frame cameras (see the render mode of src/bl_apply.py
+and src/compose_compare.py) and give me a before/after sheet of frames 0, 50, 100, 150 so I can check that fast
+motions were not smeared.
+```
+
 ## Limitations
 
 The example result is **not perfect**:
 
+- **Jitter**: every frame is fitted, so the raw action shakes frame to frame — see [Post-processing](#post-processing-suggestions).
 - **Tail** is the weakest part (largest residuals); in the front panel the tail sits too high.
 - **Airborne frames** of the run float slightly too high.
 - **No foot locking** yet, so feet can slide during contact.

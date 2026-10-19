@@ -99,10 +99,43 @@ Windows：运行 `setup.bat`（建 `.venv`、装 CUDA 版 PyTorch 和依赖、�
 
 猫模型由作者用 [Tripo](https://www.tripo3d.ai/) 从自家猫的照片生成，再手工绑骨。署名说明见 [`examples/cat/README.md`](examples/cat/README.md)。
 
+## 后处理建议
+
+拟合器对视频的每一帧都求解，即使有平滑项，原始动作也会**逐帧抖动**。请把 `mocap.blend` / `mocap.fbx` 当作原始捕捉数据，用之前先清理。通用做法：
+
+1. **对旋转做低通滤波，而不是直接滤欧拉角数值。** 每根骨：把旋转关键帧转成四元数，保持同一半球（`dot(q[t], q[t-1]) < 0` 时取反），
+   对每个分量做零相位低通（如 Butterworth，`scipy.signal.filtfilt`，2 阶，24 fps 下截止约 4–6 Hz），归一化，再转回骨骼的旋转模式并保持欧拉角连续。
+   骨架物体的位移和旋转单独滤，截止频率更低（约 2–3 Hz）。手动快速处理可以用 Blender 4.0+ 的 *曲线编辑器 → 键 → 平滑 → Butterworth 平滑*。
+2. **着地时锁脚。** 用脚部关键点找接触帧（连续几帧高度低、速度慢），在接触段用 IK 把脚钉在平均位置，前后各过渡几帧，再烘焙。
+3. **或者在拟合时就加大平滑。** 把项目配置里的 `fit.w_smooth`（默认 200）调大，重新「检测 + 拟合」。会牺牲一点重投影精度换更少的抖动，可对比前后的 `fit_report.json`。
+4. **对照视频检查。** 重新生成对比视频（「预览对比」），确认跳跃、落地等快动作没有被抹平，只在需要的地方降低截止频率。
+
+给编程 agent（Claude Code、Codex 等）的提示词示例，在本仓库里运行：
+
+```text
+用 Blender 无头打开 workspace/<项目>/videos/<id>/fit/mocap.blend。骨架上的动作是逐帧拟合的，有抖动。
+写一个 Blender Python 脚本：对每根 pose bone，把旋转关键帧转成四元数（保持半球连续），对每个分量做零相位 2 阶 Butterworth 低通
+（scipy filtfilt，按场景帧率截止 5 Hz），归一化，转回骨骼的旋转模式（XZY 欧拉角，保持连续），每帧写一个关键帧。
+骨架物体的位移和旋转用 2.5 Hz 截止平滑。不要改骨长和 rest pose。在同目录保存 mocap_smooth.blend，
+用和 src/bl_apply.py 相同的 FBX 设置导出 mocap_smooth.fbx，并报告每根骨的最大改动角度。
+```
+
+```text
+用 workspace/<项目>/videos/<id>/fit/fit.npz、src/rigtorch.py 和项目的 config.json，逐帧算出每个脚部关键点的世界坐标。
+脚离地低于 2 cm 且速度低于 0.15 m/s、并持续至少 3 帧的，标为接触帧。在 mocap_smooth.blend 里，接触段用 IK 约束把脚钉到
+接触段平均位置的目标空物体上，约束强度前后各用 3 帧过渡，烘焙成新动作，保存为 mocap_clean.blend。列出每只脚找到的接触区间。
+```
+
+```text
+用起始帧相机重新渲染 mocap_clean.blend 的对比视频（参考 src/bl_apply.py 的 render 模式和 src/compose_compare.py），
+给我第 0、50、100、150 帧的前后对比拼图，用来检查快动作有没有被抹平。
+```
+
 ## 局限
 
 示例结果**还不完美**：
 
+- **抖动**：每帧单独拟合，原始动作逐帧抖动，见[后处理建议](#后处理建议)。
 - **尾巴**最差（残差最大），正面视角里尾巴偏高。
 - 奔跑的**腾空帧**略微偏高。
 - 还**没有脚着地锁定**，接触地面时脚会滑。
