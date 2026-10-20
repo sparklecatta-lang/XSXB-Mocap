@@ -28,7 +28,8 @@ This repository is an independent re-implementation with the changes listed belo
 | Evaluation | — | **Synthetic ground-truth benchmark**: render the rig's own animation with the same cameras, run the whole pipeline, measure 3D error |
 | Rig | One creature | **Any rigged character** (tested on the cat and a procedural dog) through one JSON config (bone names, keypoints, joint limits, helper bones, orientation) |
 
-Other details: bone lengths are fixed (only joint rotations are solved), joint-limit / smoothness / floor terms,
+Other details: bone lengths are fixed (only joint rotations are solved), joint-limit / floor terms, a robust smoothness
+term that keeps fast motion (galloping legs), a de-jitter low-pass after the fit,
 whole-sequence joint optimisation, and badly deformed synthetic samples (edge stretch) are dropped from training.
 
 ### Comparison data
@@ -40,16 +41,18 @@ The original author's detector was not reproduced: "original" means our detector
 
 | Method | All keypoints | Limbs | Tail |
 |---|---|---|---|
-| Triangulate, then fit (original) | 3.87 | 4.69 | 2.75 |
-| **Ours** (2D + surface, drift correction) | **3.58** | **4.29** | **2.51** |
+| Triangulate, then fit (original) | 3.10 | 3.52 | 2.70 |
+| **Ours** (2D + surface, drift correction) | **2.87** | **3.27** | **2.26** |
 
 ![Bar chart of the table above](examples/cat/benchmark/chart.svg)
 
-About 8 % lower error overall, 9 % on limbs. The pelvis itself (always 0 after alignment) is excluded.
+About 7 % lower error overall, 7 % on limbs, 16 % on the tail. The pelvis itself (always 0 after alignment) is excluded.
+The robust smoothing and de-jitter filter (see [Post-processing](#post-processing-suggestions)) lowered our error from
+3.58 to 2.87 cm here, and from 5.76 to 3.56 cm on a fast, motion-blurred synthetic walk.
 Data and commands: [`examples/cat/benchmark`](examples/cat/benchmark), see [the example README](examples/cat/README.md#benchmark);
 `src/synth_benchmark.py` runs the whole procedure (render → video → detect → fit both ways → evaluate) for any project.
-With the previous detector (trained without afterimages) on the same video the gap was larger: ours 3.53 / 4.30 / 2.65 cm
-vs. triangulation 4.41 / 5.28 / 3.64 cm (all / limbs / tail). The new detector mostly helps triangulation; our fit stays
+With the previous detector (trained without afterimages) on the same video the gap is larger: ours 2.84 / 3.28 / 2.49 cm
+vs. triangulation 3.72 / 4.23 / 3.57 cm (all / limbs / tail). The new detector mostly helps triangulation; our fit stays
 about the same.
 
 **Real Seedance video (example cat, 193 frames)** — no ground truth, so this is the median 2D distance between the fitted
@@ -57,11 +60,11 @@ rig's keypoints and the detections (px, 834×556 panels):
 
 | Method | Front panel | Side panel |
 |---|---|---|
-| Triangulate, then fit | 9.7 | 8.9 |
-| **Ours** | **9.0** | **7.5** |
+| Triangulate, then fit | 8.4 | 7.8 |
+| **Ours** | **8.0** | **6.7** |
 
-Previous detector: triangulation 10.4 / 8.3, ours 10.2 / 7.2. A second clip (0° camera tilt, 193 frames) gives
-triangulation 10.3 / 9.3, ours 9.4 / 8.2 (previous detector: 11.5 / 9.1 and 10.4 / 8.1).
+Previous detector: triangulation 9.6 / 7.1, ours 9.0 / 6.2. A second clip (0° camera tilt, 193 frames) gives
+triangulation 8.7 / 7.4, ours 8.1 / 6.6 (previous detector: 9.7 / 7.5 and 9.0 / 6.5).
 
 ## Requirements
 
@@ -96,7 +99,7 @@ If Blender is not found automatically, set its path under **Settings**. Each ste
 2. **Start frame** — renders the start image: top = front view, bottom = left side, same orthographic scale, plus
    `cameras.json`. Give the image to an image-to-video model as the first frame.
    The cameras look down 8° by default (`start_frame.tilt_deg`), which shows the far-side feet. Against a level
-   camera (0°) it was better in our tests: 3.58 vs 3.83 cm on the synthetic walk, with the biggest gap on the tail,
+   camera (0°) it was better in our tests (measured before the smoothing update): 3.58 vs 3.83 cm on the synthetic walk, with the biggest gap on the tail,
    and better on a real clip as well. Keep the default unless you have a reason not to.
 3. **Training data + train** (one run) — random poses inside the joint limits rendered in two views (RGB, a
    rest-position map, keypoint labels; 30 % with afterimages), then a small convolutional head is trained on a
@@ -168,8 +171,9 @@ See [`examples/cat/README.md`](examples/cat/README.md) for its attribution.
 
 ## Post-processing (suggestions)
 
-The fitter solves every frame of the video, so the raw action **jitters** from frame to frame even with its smoothness
-term. Treat `mocap.blend` / `mocap.fbx` as raw capture and clean it up before use. General approach:
+The fitter smooths the action in two steps: a robust smoothness term (small frame-to-frame wobble is penalised, large
+accelerations such as galloping legs cost little) and a de-jitter low-pass on the bone curves after the fit (fades out
+where a curve moves fast). Some small shakes can remain and feet still slide. Treat `mocap.blend` / `mocap.fbx` as raw capture and clean it up before use. General approach:
 
 1. **Low-pass the rotations, not the Euler numbers.** Per pose bone: convert the rotation keys to quaternions, keep
    them in one hemisphere (flip `q` when `dot(q[t], q[t-1]) < 0`), filter each component with a zero-phase low-pass
@@ -178,8 +182,12 @@ term. Treat `mocap.blend` / `mocap.fbx` as raw capture and clean it up before us
    cutoff (≈ 2–3 Hz). Blender 4.0+ also has *Graph Editor → Key → Smooth → Butterworth Smooth* for quick manual work.
 2. **Lock feet during contact.** Find contact frames from the foot keypoints (low height and low speed for a few frames),
    pin each foot to its average position there with IK, blend a few frames in and out, then bake.
-3. **Or smooth in the fit itself.** Raise `fit.w_smooth` in the project config (default 200) and re-run *Detect + fit*;
-   it trades a little reprojection accuracy for less jitter. Compare `fit_report.json` before and after.
+3. **Or smooth more in the fit itself.** Project config, then re-run *Detect + fit* and compare `fit_report.json`:
+   - `fit.post_filter_hz` (default 6; 0 = off): de-jitter cutoff after the fit. Lower = calmer but softer motion.
+   - `fit.post_filter_fast` (default 0.05 rad/frame): curves faster than this are left unfiltered.
+   - `fit.w_smooth` (default 200) and `fit.smooth_delta` (default 0.002 rad/frame²): smoothness weight; accelerations
+     above `smooth_delta` are penalised linearly instead of quadratically. Raising either smooths more.
+     `smooth_delta` 0 is the old plain quadratic term, which flattens fast leg motion (legs barely move in a gallop).
 4. **Check against the video.** Re-render the comparison (*Preview*), and make sure fast motions (jumps, landings)
    were not smeared — lower the cutoff only where needed.
 
@@ -213,7 +221,8 @@ motions were not smeared.
 
 The example result is **not perfect**:
 
-- **Jitter**: every frame is fitted, so the raw action shakes frame to frame — see [Post-processing](#post-processing-suggestions).
+- **Jitter**: mostly removed by the smoothing and de-jitter filter, but small shakes can remain — see
+  [Post-processing](#post-processing-suggestions).
 - **Tail** is the weakest part (largest residuals); in the front panel the tail sits too high.
 - **Airborne frames** of the run float slightly too high.
 - **No foot locking** yet, so feet can slide during contact.
@@ -222,7 +231,7 @@ The example result is **not perfect**:
   10.0 px mean / 4.4 px median (448 px crops, afterimage samples included), worst on tail tip and hind toes.
 - The afterimage training has been checked on synthetic data and on two real clips that have few afterimages; it has
   not yet been tested on a clip with heavy afterimages. Motion blur is not simulated, and a synthetic fast,
-  motion-blurred walk (`--stride 4 --blur 5`) is about 5.8 cm with either detector.
+  motion-blurred walk (`--stride 4 --blur 5`) is about 3.4–3.6 cm with either detector (5.8 cm before the smoothing update).
 - Generic-rig support has been tested on the cat and on a procedural blocky test rig
   ([`tests/make_test_rig.py`](tests/make_test_rig.py): `.L/.R` names, other facing axis, scaled object, two meshes) —
   not yet on many real rigs. The draft config's joint limits are generic and usually need editing.

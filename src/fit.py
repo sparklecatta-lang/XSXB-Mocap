@@ -5,6 +5,7 @@ plus a smooth per-frame scale + vertical shift for the front panel (video-model 
 """
 import argparse, json, os, sys, time, numpy as np, torch, cv2
 from scipy.spatial import cKDTree
+from scipy.signal import butter, filtfilt
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from rigtorch import Rig
 from train import RES, OUT_RES
@@ -17,6 +18,27 @@ def rho(d, delta):                     # pseudo-Huber on distances (px)
 
 def second_diff(x):
     return x[2:] - 2 * x[1:-1] + x[:-2]
+
+
+def accel_cost(x, delta):
+    """Cost of per-bone angular accelerations x (..., 3), rad/frame^2. delta 0: squared norm (plain smoothing).
+    delta > 0: Charbonnier, squared below delta and linear above it, so fast real motion (galloping legs) costs little
+    while small jitter is still removed."""
+    n2 = x.pow(2).sum(-1)
+    return n2 if delta <= 0 else 2 * delta ** 2 * (torch.sqrt(1 + n2 / delta ** 2) - 1)
+
+
+def dejitter(x, fps, fc, fast):
+    """Zero-phase low-pass (2nd-order Butterworth, cutoff fc Hz) of curves x (T, ...) along time, faded out where the
+    low-passed curve moves faster than `fast` (per frame), so frame-to-frame jitter goes but fast motion is kept.
+    Last axis of a (T, B, 3) array = one rotation, judged by its overall speed."""
+    if fc <= 0 or fc >= fps / 2 or len(x) < 8:
+        return x
+    b, a = butter(2, fc / (fps / 2))
+    lp = filtfilt(b, a, x, axis=0, padtype="odd", padlen=min(len(x) - 1, 15))
+    g = np.gradient(lp, axis=0)
+    v = np.linalg.norm(g, axis=-1, keepdims=True) if x.ndim == 3 else np.abs(g)
+    return x + (lp - x) / (1 + (v / fast) ** 2)
 
 
 def dense_targets(pred, rig, per_view=256, max_dist=0.04, seed=0):
@@ -70,11 +92,13 @@ def main():
     ap.add_argument("--project", required=True); ap.add_argument("--pred", required=True); ap.add_argument("--out", required=True)
     ap.add_argument("--cams", default=""); ap.add_argument("--iters", type=int); ap.add_argument("--dense_iters", type=int)
     ap.add_argument("--w_dense", type=float); ap.add_argument("--w_smooth", type=float)
+    ap.add_argument("--smooth_delta", type=float, help="rad/frame^2; 0 = quadratic smoothing")
+    ap.add_argument("--post_filter_hz", type=float, help="de-jitter low-pass cutoff after the fit; 0 = off")
     ap.add_argument("--mode", default="ours", choices=["ours", "triangulate"],
                     help="triangulate = original video workflow: keypoints only, triangulate 3D, then fit bones to 3D")
     a = ap.parse_args()
     cfg = Q.load(a.project); fc = cfg["fit"]
-    for k in ("iters", "dense_iters", "w_dense", "w_smooth"):
+    for k in ("iters", "dense_iters", "w_dense", "w_smooth", "smooth_delta", "post_filter_hz"):
         if getattr(a, k) is None: setattr(a, k, fc[k])
     a.cams = a.cams or Q.paths(a.project)["cams"]
     drift = bool(fc["front_drift"]) and a.mode != "triangulate"
@@ -143,7 +167,8 @@ def main():
             L = L + a.w_dense * L_dense
         L_lim = ((rig.lim_lo - E).clamp(min=0) ** 2 + (E - rig.lim_hi).clamp(min=0) ** 2).sum((1, 2)).mean() * 100
         L_reg = (E[..., 1:] ** 2).sum((1, 2)).mean() * 0.05 + (E ** 2).sum((1, 2)).mean() * 0.005
-        L_sm = a.w_smooth * (second_diff(E).pow(2).sum((1, 2)).mean() + second_diff(rot).pow(2).sum(1).mean()
+        L_sm = a.w_smooth * (accel_cost(second_diff(E), a.smooth_delta).sum(1).mean()
+                             + accel_cost(second_diff(rot), a.smooth_delta).mean()
                              + 10 * second_diff(loc).pow(2).sum(1).mean())
         if not drift:
             la.data.zero_(); dy.data.zero_()
@@ -159,6 +184,10 @@ def main():
                   f"floor {L_floor.item():.4f} kp_px_med {d_kp.median().item():.1f} scale[{la.exp().min().item():.3f},"
                   f"{la.exp().max().item():.3f}] {time.time() - t0:.0f}s", flush=True)
     with torch.no_grad():
+        fps, fast = float(cfg["video"]["fps"]), float(fc["post_filter_fast"])
+        f = lambda t: torch.tensor(dejitter(t.detach().cpu().double().numpy(), fps, a.post_filter_hz, fast),
+                                   device=dev, dtype=torch.float32)
+        e, rot, loc = f(e * free), f(rot), f(loc)
         E = rig.full_euler(e * free)
         G = rig.fk(e * free, rot, loc); kp2 = project(rig.keypoints(G))
         res = (kp2 - kp_det).norm(dim=-1)

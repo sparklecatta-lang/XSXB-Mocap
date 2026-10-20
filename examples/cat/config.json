@@ -275,6 +275,9 @@
   "dense_iters": 1500,
   "w_dense": 0.5,
   "w_smooth": 200.0,
+  "smooth_delta": 0.002,
+  "post_filter_hz": 6.0,
+  "post_filter_fast": 0.05,
   "front_drift": true
  },
  "video": {

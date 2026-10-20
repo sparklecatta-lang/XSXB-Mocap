@@ -29,7 +29,8 @@ DEFAULTS = {
                "motion_fraction": 0.3},          # share of samples with afterimages of fast limb / tail motion
     "train": {"steps": 6000, "batch": 16, "lr": 1e-3, "max_deform": 0.02, "backbone": "weights/dinov2-base",
               "held_out": 100},
-    "fit": {"iters": 1500, "dense_iters": 1500, "w_dense": 0.5, "w_smooth": 200.0, "front_drift": True},
+    "fit": {"iters": 1500, "dense_iters": 1500, "w_dense": 0.5, "w_smooth": 200.0, "smooth_delta": 0.002,
+            "post_filter_hz": 6.0, "post_filter_fast": 0.05, "front_drift": True},
     "video": {"layout": "tb", "fps": 24},  # tb = top panel front view, bottom panel side view
 }
 
