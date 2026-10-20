@@ -3,224 +3,570 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>QuadMocap</title>
+<title>XSXB MOCAP</title>
+<meta name="application-name" content="XSXB MOCAP">
+<meta name="theme-color" content="#F5F1E8">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23002FA7'/%3E%3Cpath d='M10 10l12 12M22 10L10 22' stroke='%23F5F1E8' stroke-width='3.4' stroke-linecap='round'/%3E%3C/svg%3E">
 <style>
-:root{--bg:#f6f6f4;--card:#fff;--fg:#1d1d1b;--mut:#6b6b66;--line:#e2e2dc;--acc:#2f6fdb;--ok:#2a8a4a;--warn:#b7791f;--err:#c0392b;--code:#f0f0ec}
-@media (prefers-color-scheme:dark){:root{--bg:#161615;--card:#1f1f1d;--fg:#ececea;--mut:#9a9a94;--line:#33332f;--acc:#6b9cff;--ok:#4cc27a;--warn:#e0a84a;--err:#ff6b5b;--code:#262624}}
+:root{
+  color-scheme:light;
+  --bg:#F5F1E8;--card:#FFFDF8;--sunk:#EFE9DC;--line:#E2DACA;--line2:#D3C9B4;
+  --fg:#1E1C18;--fg2:#3F3B33;--mut:#6A6458;
+  --acc:#002FA7;--acc-h:#00238A;--acc-a:#001C6E;--acc-t:#E3E8F4;--acc-ring:rgba(0,47,167,.22);
+  --ok:#1F7A45;--ok-t:#E3F0E6;--warn:#8A5A00;--warn-t:#F6EBD2;--err:#B3261E;--err-t:#F7E1DE;
+  --r:10px;--r-lg:14px;
+  --sh:0 1px 2px rgba(40,32,16,.05),0 2px 8px rgba(40,32,16,.04);
+  --sh-up:0 -6px 24px rgba(40,32,16,.10);
+  --mono:ui-monospace,"Cascadia Mono",Consolas,"Microsoft YaHei UI",monospace;
+}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif}
-header{display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid var(--line);background:var(--card);position:sticky;top:0;z-index:5}
-header h1{font-size:16px;margin:0}
-header .sp{flex:1}
-.wrap{display:grid;grid-template-columns:220px 1fr;gap:16px;padding:16px;max-width:1400px;margin:0 auto 280px}
-@media (max-width:800px){.wrap{grid-template-columns:1fr}}
-aside .card{position:sticky;top:64px}
-.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:14px}
-.card h2{font-size:15px;margin:0 0 8px;display:flex;align-items:center;gap:8px}
-.num{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--code);font-size:12px;font-weight:600}
-.done .num{background:var(--ok);color:#fff}
-.mut{color:var(--mut)}
-.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:6px 0}
-button{font:inherit;padding:6px 12px;border-radius:7px;border:1px solid var(--line);background:var(--code);color:var(--fg);cursor:pointer}
-button.pri{background:var(--acc);border-color:var(--acc);color:#fff}
-button:disabled{opacity:.45;cursor:not-allowed}
-input,select,textarea{font:inherit;padding:5px 8px;border-radius:6px;border:1px solid var(--line);background:var(--bg);color:var(--fg)}
-input[type=number]{width:90px}
-textarea{width:100%;min-height:340px;font:12px/1.4 ui-monospace,Consolas,monospace}
-.plist a{display:block;padding:6px 8px;border-radius:6px;color:var(--fg);text-decoration:none;overflow:hidden;text-overflow:ellipsis}
-.plist a.sel{background:var(--code);font-weight:600}
-.kv{display:grid;grid-template-columns:auto 1fr;gap:2px 12px;font-size:13px}
-.kv span:nth-child(odd){color:var(--mut)}
-img.thumb{max-width:100%;max-height:360px;border-radius:6px;border:1px solid var(--line)}
-video{max-width:100%;max-height:560px;border-radius:6px;background:#000}
-.vid{border-top:1px solid var(--line);padding-top:10px;margin-top:10px}
-.warn{color:var(--warn)} .err{color:var(--err)} .ok{color:var(--ok)}
-#job{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);padding:8px 16px;z-index:6;display:none}
-#job .bar{height:8px;background:var(--code);border-radius:4px;overflow:hidden;margin:6px 0}
-#job .bar div{height:100%;background:var(--acc);width:0;transition:width .4s}
-#log{height:150px;overflow:auto;margin:0;background:var(--code);padding:6px 8px;border-radius:6px;font:12px/1.35 ui-monospace,Consolas,monospace;white-space:pre-wrap}
-details summary{cursor:pointer;color:var(--acc)}
-code{background:var(--code);padding:1px 5px;border-radius:4px}
-a{color:var(--acc)}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.55 "Segoe UI Variable Text","Segoe UI",system-ui,-apple-system,"PingFang SC","Microsoft YaHei UI","Microsoft YaHei",sans-serif;overflow-x:hidden}
+::selection{background:var(--acc);color:#fff}
+a{color:var(--acc);text-decoration:none;font-weight:500}
+a:hover{text-decoration:underline;text-underline-offset:2px}
+.mut{color:var(--mut)} .warn{color:var(--warn)} .err{color:var(--err)} .ok{color:var(--ok)}
+.sp{flex:1}
+
+/* header */
+header{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;padding:12px 24px;background:rgba(245,241,232,.92);backdrop-filter:saturate(1.2) blur(8px);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
+.brand{display:flex;align-items:center;gap:10px}
+.logo{flex:none;display:grid;place-items:center;width:30px;height:30px;border-radius:8px;background:var(--acc)}
+header h1{margin:0;font-size:17px;font-weight:800;letter-spacing:.14em;white-space:nowrap}
+header h1 b{color:var(--acc)}
+header .tag{font-size:13px;color:var(--mut);padding-left:14px;border-left:1px solid var(--line2)}
+header .tools{display:flex;gap:8px}
+
+/* layout */
+.wrap{display:grid;grid-template-columns:240px minmax(0,1fr);gap:20px;padding:20px 24px;max-width:1320px;margin:0 auto 140px}
+aside .card{position:sticky;top:76px}
+main{min-width:0}
+@media (max-width:820px){
+  .wrap{grid-template-columns:minmax(0,1fr);gap:14px;padding:14px 16px}
+  aside .card{position:static}
+  header{padding:10px 16px} header .tag{display:none}
+}
+
+/* cards */
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r-lg);padding:18px 20px;margin-bottom:16px;box-shadow:var(--sh)}
+.card h2{font-size:15px;font-weight:700;margin:0}
+aside h2.cap{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--mut);margin:0 0 10px}
+@media (max-width:560px){.card{padding:16px}}
+
+/* hero: what happens now */
+.hero{display:flex;flex-wrap:wrap;align-items:center;gap:12px 20px;border-left:4px solid var(--acc);padding:16px 20px}
+.hero .ht{flex:1 1 280px;min-width:0}
+.hero h3{margin:0;font-size:16px;font-weight:700}
+.hero .hs{margin-top:4px;color:var(--fg2);font-size:13px;line-height:1.6}
+.hero .ha{display:flex;flex-wrap:wrap;gap:8px}
+.hero.err{background:var(--err-t);border-color:#E9C2BC;border-left-color:var(--err)}
+.hero.err h3{color:var(--err)}
+.hero.warn{background:var(--warn-t);border-color:#E8D6AE;border-left-color:var(--warn)}
+.hero.ok{border-left-color:var(--ok)}
+.hero .emsg{font-family:var(--mono);font-size:12px;white-space:pre-wrap;overflow-wrap:anywhere;color:var(--fg2);max-height:120px;overflow:auto}
+.hero ul{margin:6px 0 0;padding-left:18px}
+
+/* stages */
+.sh{display:flex;align-items:center;gap:10px;min-width:0}
+.sh h2{min-width:0}
+.num{flex:none;display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;border:1.5px solid var(--line2);color:var(--mut);background:var(--card);font-size:12px;font-weight:700}
+.stage.active .num{border-color:var(--acc);color:var(--acc)}
+.stage.done .num{background:var(--acc);border-color:var(--acc);color:#fff}
+.stage .body{margin:10px 0 0 34px}
+.stage .hint{font-size:13px;line-height:1.6;color:var(--mut);max-width:78ch;margin:0 0 10px}
+@media (max-width:560px){.stage .body,.stage .adv{margin-left:0}}
+.pill{margin-left:auto;flex:none;display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:3px 10px;border-radius:99px;background:var(--sunk);color:var(--mut);white-space:nowrap}
+.pill.done{background:var(--acc-t);color:var(--acc)}
+.pill.run{background:var(--acc);color:#fff}
+.pill.queue{background:var(--sunk);color:var(--fg2)}
+.pill.err{background:var(--err-t);color:var(--err)}
+.pill.block{background:var(--warn-t);color:var(--warn)}
+.pill.run i,.dot.run{width:7px;height:7px;border-radius:50%;background:currentColor;animation:pulse 1.2s ease-in-out infinite}
+@keyframes pulse{50%{opacity:.25}}
+.sum{font-size:13px;color:var(--fg2);overflow-wrap:anywhere}
+.sum b{color:var(--fg)}
+.wlist{font-size:13px;color:var(--warn);margin-top:6px}
+
+/* drop zones */
+.drop{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;text-align:center;border:2px dashed var(--line2);border-radius:var(--r-lg);background:var(--bg);padding:22px 16px;cursor:pointer;color:var(--fg2);font-size:13px;transition:border-color .15s,background .15s}
+.drop:hover{border-color:var(--acc);background:var(--acc-t)}
+.drop .ic{display:grid;place-items:center;width:38px;height:38px;border-radius:50%;background:var(--acc-t);color:var(--acc);margin-bottom:4px}
+.drop:hover .ic{background:var(--acc);color:#fff}
+.drop b{font-size:15px;color:var(--fg)}
+.drop small{color:var(--mut);font-size:12px}
+.drop.big{padding:64px 24px;background:var(--card)}
+.drop.big b{font-size:20px}
+.drop.big .ic{width:60px;height:60px}
+.drop.sm{padding:14px 10px;gap:2px}
+.drop.sm b{font-size:13px}
+.drop.sm .ic{width:28px;height:28px}
+#dragOv{position:fixed;inset:0;z-index:50;display:none;place-items:center;padding:24px;background:rgba(0,47,167,.92);color:#F5F1E8;pointer-events:none;text-align:center}
+#dragOv.on{display:grid}
+#dragOv .box{border:2px dashed rgba(245,241,232,.6);border-radius:24px;padding:48px 40px;max-width:560px}
+#dragOv b{display:block;font-size:26px;letter-spacing:.04em;margin-bottom:10px}
+#dragOv .sub{font-size:14px;line-height:1.8;opacity:.9}
+
+/* rows, fields, buttons */
+.row{display:flex;flex-wrap:wrap;gap:8px 10px;align-items:center;margin:8px 0}
+label{cursor:pointer;color:var(--fg2);font-size:13px;display:inline-flex;align-items:center;gap:6px}
+input[type=checkbox]{accent-color:var(--acc);width:15px;height:15px;margin:0}
+button,.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;font:inherit;font-size:13px;font-weight:600;line-height:1.2;padding:8px 14px;min-height:34px;border-radius:var(--r);border:1px solid var(--line2);background:var(--card);color:var(--fg);cursor:pointer;text-decoration:none;transition:background .15s,border-color .15s,color .15s}
+button:hover:not(:disabled),.btn:hover{border-color:var(--acc);color:var(--acc);text-decoration:none}
+button:active:not(:disabled),.btn:active{transform:translateY(1px)}
+button.pri,.btn.pri{background:var(--acc);border-color:var(--acc);color:#fff}
+button.pri:hover:not(:disabled),.btn.pri:hover{background:var(--acc-h);border-color:var(--acc-h);color:#fff}
+button.danger{color:var(--err);border-color:#E3C6C1;background:transparent}
+button.danger:hover:not(:disabled){background:var(--err-t);border-color:var(--err);color:var(--err)}
+button.ghost{background:transparent;border-color:transparent;color:var(--fg2)}
+button.ghost:hover:not(:disabled){background:var(--sunk);border-color:transparent;color:var(--fg)}
+button:disabled{opacity:.42;cursor:not-allowed}
+button:focus-visible,.btn:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,summary:focus-visible,a:focus-visible,.drop:focus-visible{outline:none;box-shadow:0 0 0 3px var(--acc-ring)}
+input,select,textarea{font:inherit;font-size:13px;padding:7px 10px;min-height:34px;border-radius:var(--r);border:1px solid var(--line2);background:#FFFEFB;color:var(--fg);max-width:100%}
+input:hover,select:hover,textarea:hover{border-color:#BFB49C}
+input[type=number]{width:96px;font-variant-numeric:tabular-nums}
+input[type=checkbox]{min-height:0;padding:0}
+textarea{width:100%;min-height:340px;font:12px/1.5 var(--mono);background:var(--sunk);resize:vertical}
+
+/* project list */
+.plist{display:flex;flex-direction:column;gap:2px}
+.plist a{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:var(--r);color:var(--fg2);font-weight:500;text-decoration:none;border-left:3px solid transparent}
+.plist a span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.plist a:hover{background:var(--sunk);color:var(--fg)}
+.plist a.sel{background:var(--acc-t);color:var(--acc);font-weight:700;border-left-color:var(--acc)}
+.dot{flex:none;width:7px;height:7px;border-radius:50%;color:var(--acc)}
+.dot.err{background:var(--err)}
+.sep{border:0;border-top:1px solid var(--line);margin:14px 0}
+.exl{display:flex;flex-direction:column;gap:2px;margin-top:6px}
+.exl a{padding:5px 8px;border-radius:8px;font-size:13px}
+.exl a:hover{background:var(--sunk);text-decoration:none}
+
+/* advanced (collapsed) */
+details>summary{cursor:pointer;list-style:none;display:inline-flex;align-items:center;gap:6px;font-weight:600;font-size:13px;color:var(--acc);border-radius:6px}
+details>summary::-webkit-details-marker{display:none}
+details>summary::before{content:"";width:6px;height:6px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg);transition:transform .15s;margin-right:2px}
+details[open]>summary::before{transform:rotate(45deg)}
+.adv{margin:12px 0 0 34px}
+.adv>summary{color:var(--mut);font-size:12px}
+.adv>summary:hover{color:var(--fg)}
+.advb{margin-top:8px;padding:12px 14px;background:var(--bg);border:1px solid var(--line);border-radius:var(--r)}
+.advb .sub{font-size:13px;color:var(--mut);margin:4px 0}
+.advb hr{border:0;border-top:1px solid var(--line);margin:12px 0}
+
+/* media */
+img.thumb{display:block;max-width:100%;max-height:380px;border-radius:var(--r);border:1px solid var(--line);background:var(--sunk)}
+video{display:block;max-width:100%;max-height:560px;margin-top:8px;border-radius:var(--r);background:#14130F}
+.vid{border:1px solid var(--line);border-radius:var(--r);background:var(--bg);padding:12px 14px;margin-top:12px}
+.vh{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px}
+.vh b{font-size:14px;overflow-wrap:anywhere}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-left:auto}
+.chip{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;padding:2px 9px;border-radius:99px;background:var(--sunk);color:var(--mut)}
+.chip.done{background:var(--acc-t);color:var(--acc)}
+.chip.run{background:var(--acc);color:#fff}
+.chip.err{background:var(--err-t);color:var(--err)}
+.vid .adv{margin-left:0}
+.cap{font-size:12px;color:var(--mut);margin-top:8px}
+
+/* toasts */
+#toasts{position:fixed;top:68px;right:16px;z-index:40;display:flex;flex-direction:column;gap:8px;width:min(340px,calc(100vw - 32px))}
+.toast{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--acc);border-radius:var(--r);padding:10px 12px;box-shadow:0 6px 24px rgba(40,32,16,.12);font-size:13px;overflow-wrap:anywhere}
+.toast.err{border-left-color:var(--err)} .toast.ok{border-left-color:var(--ok)}
+.tbar{height:4px;background:var(--sunk);border-radius:99px;margin-top:8px;overflow:hidden}
+.tbar i{display:block;height:100%;width:0;background:var(--acc);transition:width .2s}
+
+/* bottom job strip */
+#job{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);box-shadow:var(--sh-up);padding:10px 24px 12px;z-index:6}
+#job>*{max-width:1272px;margin-left:auto;margin-right:auto}
+.jrow{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px}
+.jrow button{min-height:30px;padding:5px 12px}
+#jobTitle{font-size:14px;overflow-wrap:anywhere}
+#jobStage{font-size:13px;color:var(--mut);overflow-wrap:anywhere;min-width:0}
+#jobPct{font-weight:700;font-variant-numeric:tabular-nums;color:var(--acc)}
+.spin{display:none;flex:none;width:14px;height:14px;border-radius:50%;border:2px solid var(--acc-t);border-top-color:var(--acc);animation:spin .9s linear infinite}
+#job.active .spin{display:inline-block}
+@keyframes spin{to{transform:rotate(360deg)}}
+#job .bar{height:6px;background:var(--sunk);border-radius:99px;overflow:hidden;margin-top:8px}
+#job .bar div{height:100%;background:var(--acc);width:0;border-radius:99px;transition:width .4s}
+#log{display:block;height:170px;overflow:auto;background:#1C1B17;color:#E9E3D4;padding:10px 12px;border-radius:var(--r);font:12px/1.45 var(--mono);white-space:pre-wrap;overflow-wrap:anywhere;margin-top:10px;margin-bottom:0}
+@media (max-width:820px){#job{padding:10px 16px}#log{height:120px}}
 </style>
 </head>
 <body>
 <header>
-  <h1>QuadMocap</h1><span class="mut" data-t="tagline"></span><span class="sp"></span>
-  <button id="langBtn"></button><button id="setBtn" data-t="settings"></button>
+  <div class="brand">
+    <span class="logo" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 16 16"><path d="M3 3l10 10M13 3L3 13" stroke="#F5F1E8" stroke-width="2.4" stroke-linecap="round"/></svg></span>
+    <h1>XSXB <b>MOCAP</b></h1>
+  </div>
+  <span class="tag" data-t="tagline"></span><span class="sp"></span>
+  <div class="tools"><button class="ghost" data-act="lang" id="langBtn"></button><button data-act="setBlender" data-t="settings"></button></div>
 </header>
 <div class="wrap">
   <aside><div class="card">
-    <h2 data-t="projects"></h2>
+    <h2 class="cap" data-t="projects"></h2>
     <div class="plist" id="plist"></div>
-    <hr style="border:0;border-top:1px solid var(--line)">
-    <div class="row"><input id="newName" placeholder="name" style="width:100%"></div>
-    <div class="row"><select id="newEx" style="width:100%"></select></div>
-    <div class="row"><button class="pri" id="newBtn" data-t="create"></button></div>
+    <hr class="sep">
+    <div class="drop sm" data-act="pickRig" tabindex="0"><span class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span><b data-t="newRig"></b><small>.blend / .fbx / .glb</small></div>
+    <details class="adv" style="margin:12px 0 0"><summary data-t="fromEx"></summary><div class="exl" id="exList"></div></details>
   </div></aside>
   <main id="main"></main>
 </div>
-<div id="job">
-  <div class="row" style="margin:0"><b id="jobTitle"></b><span class="mut" id="jobStage"></span><span class="sp" style="flex:1"></span>
-    <span id="jobPct"></span><button id="jobCancel" data-t="cancel"></button><button id="jobHide" data-t="hide"></button></div>
+<div id="job" hidden>
+  <div class="jrow"><span class="spin"></span><b id="jobTitle"></b><span id="jobStage"></span><span class="sp"></span>
+    <span id="jobPct"></span><button class="ghost" id="jobLog"></button><button class="danger" id="jobCancel" data-t="cancel"></button><button class="ghost" id="jobClose" data-t="close"></button></div>
   <div class="bar"><div id="jobBar"></div></div>
-  <pre id="log"></pre>
+  <pre id="log" hidden></pre>
 </div>
+<div id="toasts"></div>
+<div id="dragOv"><div class="box"><b data-t="dropTitle"></b><div class="sub" id="dragSub"></div></div></div>
+<input type="file" id="picker" multiple hidden>
 <script>
 const T={
- zh:{tagline:"绑骨角色的视频动作捕捉",settings:"设置",projects:"项目",create:"新建",cancel:"取消",hide:"收起",lang:"English",
-  blank:"空项目",fromEx:"从示例复制：",s1:"导入 rig",s1d:"上传绑好骨的模型（.blend / .fbx / .glb）。会清理场景、导出骨骼和蒙皮，没有配置时按骨名自动生成草稿配置。",
-  regen:"重新生成配置草稿",upload:"上传并导入",reprep:"重新处理当前 rig",cfg:"rig 配置",cfgd:"骨名、关键点、关节限制、辅助骨、朝向都在这里。改完保存；改了 armature/mesh 要重新导入。",
-  save:"保存",saved:"已保存",s2:"生成起始帧",s2d:"上=正面，下=左侧面，同一正交比例。把这张图作为首帧交给视频模型（如 Seedance），提示里写明上下画面完全同步。",
-  run:"运行",download:"下载",s3:"生成训练数据并训练",s3d:"先在关节限制内随机摆姿、双视角渲染（RGB + 表面坐标图 + 关键点标签），再训练检测头（DINOv2 主干冻结）。一次跑完；默认值就是推荐值，RTX 5060 Ti 上约 40 分钟。",
-  samples:"渲染组数",workers:"并行 Blender",steps:"训练步数",rec:"推荐",reuse:"复用已有训练数据，只重新训练",haveData:"已有训练数据",
-  s5:"视频：检测 + 拟合 → 预览 → 导出",s5d:"视频须是上下两格：上=正面，下=侧面，由第 2 步的起始帧生成。",uploadV:"上传视频",
-  detect:"检测 + 拟合",preview:"预览对比",export:"导出 FBX / .blend",mode:"方法",ours:"我们的（2D + 表面对应）",tri:"原视频方式（三角化）",
-  del:"删除",have:"已有",none:"无",need:"需要先完成前面的步骤",resid:"关节残差中位数 px",front:"正面",side:"侧面",
-  blender:"Blender 路径",noBlender:"没找到 Blender，请在设置里填写 blender.exe 路径。",confirmDel:"确定删除？",evalTxt:"合成测试集误差 px（均值/中位数）",
-  overlay:"检测叠加",compare:"左：原视频 右：拟合结果",kps:"关键点",verts:"顶点",bones:"骨骼",ref:"参考动作",startHint:"首帧图",
-  jobDone:"完成",jobErr:"失败",busy:"有任务在跑"},
- en:{tagline:"video motion capture for rigged characters",settings:"Settings",projects:"Projects",create:"Create",cancel:"Cancel",hide:"Hide",lang:"中文",
-  blank:"Empty project",fromEx:"Copy example: ",s1:"Import rig",s1d:"Upload a rigged character (.blend / .fbx / .glb). The scene is cleaned, bones and skin weights exported; a draft config is guessed from bone names if none exists.",
-  regen:"Regenerate config draft",upload:"Upload & import",reprep:"Re-process current rig",cfg:"Rig config",cfgd:"Bone names, keypoints, joint limits, helper bones and orientation live here. Re-import after changing armature/mesh.",
-  save:"Save",saved:"Saved",s2:"Start frame",s2d:"Top = front view, bottom = left side, same ortho scale. Give this image to the video model (e.g. Seedance) as the first frame; ask for both panels to stay in sync.",
-  run:"Run",download:"Download",s3:"Training data + train",s3d:"Renders random poses inside the joint limits in two views (RGB + surface-coordinate map + keypoint labels), then trains the detector head on a frozen DINOv2 backbone. One run; the defaults are the recommended values (~40 min on an RTX 5060 Ti).",
-  samples:"Samples",workers:"Blender workers",steps:"Training steps",rec:"recommended",reuse:"Reuse existing training data, only retrain",haveData:"Training data",
-  s5:"Videos: detect + fit → preview → export",s5d:"Two stacked panels: top = front, bottom = side, generated from the step-2 start frame.",uploadV:"Upload video",
-  detect:"Detect + fit",preview:"Preview",export:"Export FBX / .blend",mode:"Method",ours:"Ours (2D + surface correspondences)",tri:"Original (triangulate)",
-  del:"Delete",have:"have",none:"none",need:"finish the earlier steps first",resid:"Joint residual median px",front:"front",side:"side",
-  blender:"Blender path",noBlender:"Blender not found. Set the path to blender.exe in Settings.",confirmDel:"Delete?",evalTxt:"Synthetic test error px (mean/median)",
-  overlay:"Detections",compare:"Left: source, right: fitted rig",kps:"Keypoints",verts:"Vertices",bones:"Bones",ref:"Reference poses",startHint:"Start frame",
-  jobDone:"done",jobErr:"failed",busy:"job running"}};
+ zh:{tagline:"绑骨角色的视频动作捕捉",settings:"设置",projects:"角色项目",lang:"English",newRig:"拖入角色文件新建",fromEx:"从示例创建",
+  dropTitle:"松开即可上传",dropRig:"角色文件（.blend / .fbx / .glb）→ 新建项目",dropVid:"视频（.mp4 等）→ 加入「{0}」",
+  emptyTitle:"把绑好骨的角色拖进来",emptySub:"支持 .blend / .fbx / .glb。之后会自动导入、生成首帧图、训练识别模型。",pick:"也可以点这里选择文件",
+  st1:"角色",st2:"首帧图",st3:"训练识别模型",st4:"视频动捕",
+  p_done:"完成",p_run:"进行中",p_queue:"等待中",p_wait:"未开始",p_err:"失败",p_block:"需要处理",queued:"排队中",
+  sfHint:"上=正面，下=左侧面。把这张图作为首帧交给视频模型（如 Seedance），提示里写明上下两个画面完全同步。",sfWait:"角色导入后自动生成。",
+  dlStart:"下载首帧图",trainHint:"在关节限制内随机摆姿渲染训练数据，再训练识别模型。默认参数即推荐值，RTX 5060 Ti 约 40 分钟。",trainWait:"首帧图生成后自动开始。",
+  evalTxt:"测试误差 px（均值 / 中位数）",haveData:"已有训练数据",
+  vidDrop:"把生成好的双视角视频拖到这里",vidDropSub:"上=正面，下=侧面；可一次拖多个，自动检测、拟合、导出、出预览",vidWait:"识别模型训练好后会自动处理这些视频。",
+  c_fit:"拟合",c_export:"导出",c_preview:"预览",compare:"左：原视频　右：拟合结果",overlay:"检测叠加视频",resid:"关节残差中位数 px",front:"正面",side:"侧面",
+  adv:"高级选项",reimport:"重新导入角色文件…",regen:"同时重新生成配置草稿",reprep:"重新处理当前角色",cfg:"rig 配置（JSON）",
+  cfgd:"骨名、关键点、关节限制、辅助骨、朝向都在这里。改了 armature/mesh 要重新导入。",openCfg:"打开配置",save:"保存",saved:"已保存",
+  redoSf:"重新生成首帧图",samples:"渲染组数",workers:"并行 Blender",steps:"训练步数",rec:"推荐",reuse:"复用已有训练数据，只重新训练",retrain:"重新训练",
+  mode:"方法",ours:"我们的（2D + 表面对应）",tri:"原视频方式（三角化）",refit:"重新拟合",del:"删除",delProj:"删除这个项目",confirmDel:"确定删除？",project:"项目",
+  continue:"继续自动处理",retry:"重试",log:"日志",hideLog:"收起日志",cancel:"取消",close:"关闭",setBlender:"设置 Blender 路径",
+  blender:"Blender 路径（blender.exe）",noBlender:"没找到 Blender",noBlenderSub:"请填写 blender.exe 的路径，所有步骤都需要它。",
+  h_err:"「{0}」失败了",h_cfg:"角色配置需要检查",h_cfgSub:"改好后保存，会自动继续。",h_run:"正在{0}…",h_runSub:"可以离开去做别的，完成后会自动进行下一步。",
+  h_train:"首帧图好了，识别模型正在后台训练",h_trainSub:"现在就可以下载首帧图，交给 Seedance 生成上下双视角视频；生成好的视频直接拖进来，训练完会自动处理。",
+  h_queue:"马上开始：{0}",h_paused:"已暂停，下一步：{0}",h_needVid:"一切就绪，把生成好的视频拖进来",h_needVidSub:"每段视频会自动检测、拟合，并导出 FBX / .blend。",
+  h_done:"全部完成",h_doneSub:"在下面每段视频里下载 FBX / .blend；再拖入新视频会继续自动处理。",
+  k_prep:"导入角色",k_start_frame:"生成首帧图",k_build:"训练识别模型",k_detect_fit:"检测 + 拟合",k_export:"导出 FBX / .blend",k_preview:"生成预览",
+  uploading:"上传中：",uploaded:"已上传",badFile:"不支持的文件：",needProj:"请先拖入角色文件新建项目，再拖视频。",
+  jobDone:"完成",jobErr:"失败",cancelled:"已取消",noOutput:"这一步跑完了但没有生成结果，已暂停。请查看日志。",kps:"关键点",bones:"骨骼",verts:"顶点"},
+ en:{tagline:"video motion capture for rigged characters",settings:"Settings",projects:"Projects",lang:"中文",newRig:"Drop a character to start",fromEx:"Start from an example",
+  dropTitle:"Drop to upload",dropRig:"Character file (.blend / .fbx / .glb) → new project",dropVid:"Video (.mp4 etc.) → add to “{0}”",
+  emptyTitle:"Drop your rigged character here",emptySub:".blend / .fbx / .glb. Import, start frame and model training then run automatically.",pick:"or click to choose a file",
+  st1:"Character",st2:"Start frame",st3:"Train detector",st4:"Video mocap",
+  p_done:"Done",p_run:"Running",p_queue:"Up next",p_wait:"Not started",p_err:"Failed",p_block:"Needs attention",queued:"queued",
+  sfHint:"Top = front view, bottom = left side. Give this image to the video model (e.g. Seedance) as the first frame and ask for both panels to stay in sync.",sfWait:"Made automatically after import.",
+  dlStart:"Download start frame",trainHint:"Renders random poses inside the joint limits, then trains the detector. Defaults are recommended (~40 min on an RTX 5060 Ti).",trainWait:"Starts automatically after the start frame.",
+  evalTxt:"Test error px (mean / median)",haveData:"Training data",
+  vidDrop:"Drop your two-view videos here",vidDropSub:"Top = front, bottom = side. Drop several at once: detect, fit, export and preview run automatically.",vidWait:"These videos are processed automatically once the detector is trained.",
+  c_fit:"Fit",c_export:"Export",c_preview:"Preview",compare:"Left: source · Right: fitted rig",overlay:"Detection overlay",resid:"Joint residual median px",front:"front",side:"side",
+  adv:"Advanced",reimport:"Re-import character file…",regen:"Also regenerate config draft",reprep:"Re-process current rig",cfg:"Rig config (JSON)",
+  cfgd:"Bone names, keypoints, joint limits, helper bones and orientation. Re-import after changing armature/mesh.",openCfg:"Open config",save:"Save",saved:"Saved",
+  redoSf:"Remake start frame",samples:"Samples",workers:"Blender workers",steps:"Training steps",rec:"recommended",reuse:"Reuse existing training data, only retrain",retrain:"Retrain",
+  mode:"Method",ours:"Ours (2D + surface correspondences)",tri:"Original (triangulate)",refit:"Re-fit",del:"Delete",delProj:"Delete this project",confirmDel:"Delete?",project:"Project",
+  continue:"Continue automatically",retry:"Retry",log:"Log",hideLog:"Hide log",cancel:"Cancel",close:"Close",setBlender:"Set Blender path",
+  blender:"Blender path (blender.exe)",noBlender:"Blender not found",noBlenderSub:"Set the path to blender.exe; every step needs it.",
+  h_err:"“{0}” failed",h_cfg:"The rig config needs a look",h_cfgSub:"Save your fix and it continues automatically.",h_run:"{0}…",h_runSub:"You can leave this page; the next step starts automatically.",
+  h_train:"Start frame ready, detector training in the background",h_trainSub:"Download the start frame and make the two-view video with Seedance now; drop the videos in and they are processed once training ends.",
+  h_queue:"Starting: {0}",h_paused:"Paused. Next: {0}",h_needVid:"All set: drop your videos in",h_needVidSub:"Each video is detected, fitted and exported to FBX / .blend automatically.",
+  h_done:"All done",h_doneSub:"Download FBX / .blend from each video below. New videos you drop are processed automatically.",
+  k_prep:"Importing character",k_start_frame:"Making start frame",k_build:"Training detector",k_detect_fit:"Detect + fit",k_export:"Export FBX / .blend",k_preview:"Render preview",
+  uploading:"Uploading: ",uploaded:"Uploaded",badFile:"Unsupported file: ",needProj:"Drop a character file first to create a project, then the videos.",
+  jobDone:"done",jobErr:"failed",cancelled:"cancelled",noOutput:"The step finished but produced no result; paused. Check the log.",kps:"keypoints",bones:"bones",verts:"verts"}};
 let L=localStorage.getItem("qm_lang")||"zh";
-const t=k=>T[L][k]||k;
+const t=(k,...a)=>{let s=T[L][k]??T.zh[k]??k;a.forEach((x,i)=>s=s.replace("{"+i+"}",x));return s};
 const $=s=>document.querySelector(s);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-let cur=localStorage.getItem("qm_proj")||"", P=null, settings=null, job=null, jobNext=0, poll=null;
+const RIG_EXT=[".blend",".fbx",".glb",".gltf"],VID_EXT=[".mp4",".mov",".webm",".mkv",".avi",".m4v"];
+const ext=n=>(n.match(/\.[^.]+$/)||[""])[0].toLowerCase();
+const ACTIVE=s=>s==="queued"||s==="running";
+const fmt=s=>s<60?`${s}s`:s<3600?`${Math.floor(s/60)}m${String(s%60).padStart(2,"0")}s`:`${Math.floor(s/3600)}h${String(Math.floor(s%3600/60)).padStart(2,"0")}m`;
+const ICON_UP=`<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V4M7 9l5-5 5 5M4 20h16"/></svg>`;
+const ICON_VID=`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="13" height="14" rx="2"/><path d="M16 10l5-3v10l-5-3"/></svg>`;
+
+let cur=localStorage.getItem("qm_proj")||"",projects=[],settings=null,jobs=[],seen={};
+// auto: projects the user handed to the autopilot; tasks: explicit re-runs; inflight: the job the autopilot started
+let ST={auto:{},tasks:{},inflight:{}};try{Object.assign(ST,JSON.parse(localStorage.getItem("qm_state")||"{}"))}catch(e){}
+const save=()=>{try{localStorage.setItem("qm_state",JSON.stringify(ST))}catch(e){}};
+const setCur=p=>{if(p!==cur)cfgDraft=null;cur=p;try{localStorage.setItem("qm_proj",cur)}catch(e){}};
+let errs={},doneKeys={},piloting=false,panelJob=null,lastEnded=null,closed=new Set(),logOpen=false,logFor=null,logNext=0,cfgDraft=null;
 
 async function api(path,opt={}){
-  const r=await fetch(path,opt); let j=null; try{j=await r.json()}catch(e){}
-  if(!r.ok) throw new Error((j&&j.detail)||r.statusText); return j;
+  const r=await fetch(path,opt);let j=null;try{j=await r.json()}catch(e){}
+  if(!r.ok)throw new Error((j&&j.detail)||r.statusText);return j;
 }
 const post=(p,b)=>api(p,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b||{})});
+const f=rel=>`/files/${cur}/${rel}?v=${Date.now()}`;
+
+function kind(title){
+  if(/^(import_rig|prep)$/.test(title))return{s:1,step:"prep"};
+  if(title==="start_frame")return{s:2,step:"start_frame"};
+  if(/^(build|render|train)$/.test(title))return{s:3,step:"build"};
+  const m=String(title).match(/^(detect_fit|preview|export)_(.+)$/);if(m)return{s:4,step:m[1],v:m[2]};
+  return{s:0,step:title};
+}
+const titleOf=k=>k.v?`${k.step}_${k.v}`:k.step;
+const keyOf=k=>`${k.step}:${k.v||""}`;
+const label=k=>t("k_"+k.step)+(k.v?` · ${k.v}`:"");
+const runOf=p=>jobs.find(j=>j.project===p&&ACTIVE(j.status));
+const buildBody=S=>({samples:S.render_samples||1500,workers:3,steps:S.train_steps||6000});
+function nextStep(S){
+  if(!S.prepped)return S.source?{step:"prep"}:null;
+  if(!S.config||S.config_error||(S.config_warnings||[]).length)return{block:"cfg"};
+  if(!S.start_frame)return{step:"start_frame"};
+  if(!S.model)return{step:"build",body:buildBody(S)};
+  for(const v of S.videos||[]){
+    if(!v.fitted)return{step:"detect_fit",v:v.id,body:{mode:"ours"}};
+    if(!v.fbx||!v.blend)return{step:"export",v:v.id};
+    if(!v.compare)return{step:"preview",v:v.id};
+  }
+  return null;
+}
+function launch(p,k){return post(k.v?`/api/projects/${p}/videos/${k.v}/run/${k.step}`:`/api/projects/${p}/run/${k.step}`,k.body).then(r=>r.job)}
+function fail(p,k,error,id){ST.auto[p]=false;errs[p]={...kind(titleOf(k)),error,id};save()}
+function armAuto(p){ST.auto[p]=true;delete errs[p];delete doneKeys[p];save()}
+
+async function autopilot(){
+  if(piloting||!settings||!settings.blender)return;piloting=true;
+  try{for(const S of projects){const p=S.name;
+    if(!ST.auto[p]||S.busy||runOf(p)||ST.inflight[p])continue;
+    let k=(ST.tasks[p]||[])[0],isTask=!!k;
+    if(!k){k=nextStep(S);if(!k||k.block)continue;
+      if(doneKeys[p]&&doneKeys[p].has(keyOf(k))){fail(p,k,t("noOutput"));continue}}
+    try{const id=await launch(p,k);ST.inflight[p]={id,task:isTask,key:keyOf(k)};seen[id]="queued";S.busy=true;
+      jobs.unshift({id,project:p,title:titleOf(k),status:"queued",progress:0,stage:"",stage_index:0,stages:1,elapsed:0})}
+    catch(e){fail(p,k,e.message)}
+    save()}}finally{piloting=false}
+}
+function handleEnd(j){
+  const p=j.project,inf=ST.inflight[p],k=kind(j.title);
+  if(inf&&inf.id===j.id){delete ST.inflight[p];
+    if(j.status==="done"){if(inf.task)(ST.tasks[p]||[]).shift();else(doneKeys[p]=doneKeys[p]||new Set()).add(inf.key)}
+    else if(j.status==="cancelled"&&inf.task)(ST.tasks[p]||[]).shift()}
+  if(j.status!=="done"){ST.auto[p]=false;errs[p]={...k,error:j.status==="cancelled"?t("cancelled"):j.error,id:j.id}}
+  else if(errs[p]&&errs[p].step===k.step)delete errs[p];
+  lastEnded=j.id;save();
+}
+let polling=false;
+async function pollJobs(init){
+  if(polling)return;polling=true;
+  try{let js;try{js=await api("/api/jobs")}catch(e){return}
+    jobs=js;let changed=false;
+    for(const j of js){const prev=seen[j.id];
+      if(prev===undefined){seen[j.id]=j.status;if(!init){changed=true;if(!ACTIVE(j.status))handleEnd(j)}}
+      else if(prev!==j.status){seen[j.id]=j.status;changed=true;if(ACTIVE(prev)&&!ACTIVE(j.status))handleEnd(j)}}
+    for(const p in ST.inflight)if(!js.find(j=>j.id===ST.inflight[p].id)){delete ST.inflight[p];save();changed=true}
+    if(changed&&!init)await refresh();else updatePanel();
+  }finally{polling=false}
+}
+async function refresh(){
+  try{projects=await api("/api/projects")}catch(e){return}
+  if(!projects.find(p=>p.name===cur))setCur(projects.length?projects[0].name:"");
+  await autopilot();render();updatePanel();
+}
+
+/* ---------- uploads & drops ---------- */
+function toast(msg,bar,cls){const d=document.createElement("div");d.className="toast "+(cls||"");
+  d.innerHTML=`<div>${esc(msg)}</div>${bar?'<div class="tbar"><i></i></div>':""}`;$("#toasts").append(d);
+  const o={set:x=>{const i=d.querySelector("i");if(i)i.style.width=(x*100)+"%"},close:()=>d.remove()};
+  if(!bar)setTimeout(o.close,cls==="err"?7000:3500);return o}
+function upload(url,file,extra={}){return new Promise((res,rej)=>{
+  const fd=new FormData();fd.append("file",file);for(const k in extra)fd.append(k,extra[k]);
+  const x=new XMLHttpRequest(),tt=toast(t("uploading")+file.name,true);
+  x.upload.onprogress=e=>{if(e.lengthComputable)tt.set(e.loaded/e.total)};
+  x.onload=()=>{tt.close();let j=null;try{j=JSON.parse(x.responseText)}catch(e){}
+    x.status>=200&&x.status<300?res(j):rej(new Error((j&&j.detail)||x.statusText))};
+  x.onerror=()=>{tt.close();rej(new Error("network error"))};x.open("POST",url);x.send(fd)})}
+function uniqueName(stem){
+  let s=stem.replace(/[^A-Za-z0-9_\-]+/g,"_").replace(/^[^A-Za-z0-9]+/,"").replace(/_+$/,"").slice(0,40)||"rig";
+  const names=new Set(projects.map(p=>p.name));let n=s,k=2;while(names.has(n))n=`${s}_${k++}`;return n}
+async function importRig(file,into,regen){
+  let p=into;
+  if(!p){const S=projects.find(x=>x.name===cur);
+    if(S&&!S.source&&!S.prepped&&!runOf(S.name))p=S.name;
+    else{p=uniqueName(file.name.replace(/\.[^.]+$/,""));await post("/api/projects",{name:p});projects.push({name:p,videos:[]})}}
+  setCur(p);
+  const r=await upload(`/api/projects/${p}/rig`,file,{reset_config:regen?"1":"0"});
+  armAuto(p);if(r&&r.job)seen[r.job]="queued";
+}
+async function handleFiles(list){
+  const fs=[...list],isRig=x=>RIG_EXT.includes(ext(x.name));
+  const rigs=fs.filter(isRig),vids=fs.filter(x=>!isRig(x)&&(VID_EXT.includes(ext(x.name))||(x.type||"").startsWith("video/")));
+  fs.filter(x=>!rigs.includes(x)&&!vids.includes(x)).forEach(x=>toast(t("badFile")+x.name,false,"err"));
+  try{for(const x of rigs)await importRig(x);
+    if(vids.length){
+      if(!projects.find(p=>p.name===cur))toast(t("needProj"),false,"err");
+      else{for(const x of vids)await upload(`/api/projects/${cur}/videos`,x);armAuto(cur);toast(`${t("uploaded")} · ${vids.length}`,false,"ok")}}
+  }catch(e){toast(e.message,false,"err")}
+  await refresh();
+}
+function pick(accept,cb){const el=$("#picker");el.accept=accept;
+  el.onchange=()=>{const fs=[...el.files];el.value="";if(fs.length)(cb||handleFiles)(fs)};el.click()}
+let dragDepth=0;const hasFiles=e=>[...((e.dataTransfer&&e.dataTransfer.types)||[])].includes("Files");
+addEventListener("dragenter",e=>{if(!hasFiles(e))return;e.preventDefault();dragDepth++;
+  $("#dragSub").innerHTML=esc(t("dropRig"))+(cur?"<br>"+esc(t("dropVid",cur)):"");$("#dragOv").classList.add("on")});
+addEventListener("dragover",e=>{if(!hasFiles(e))return;e.preventDefault();e.dataTransfer.dropEffect="copy"});
+addEventListener("dragleave",e=>{if(!hasFiles(e))return;if(--dragDepth<=0){dragDepth=0;$("#dragOv").classList.remove("on")}});
+addEventListener("drop",e=>{if(!hasFiles(e))return;e.preventDefault();dragDepth=0;$("#dragOv").classList.remove("on");handleFiles(e.dataTransfer.files)});
+
+/* ---------- render ---------- */
 function applyLang(){document.querySelectorAll("[data-t]").forEach(e=>e.textContent=t(e.dataset.t));$("#langBtn").textContent=t("lang");document.documentElement.lang=L}
-$("#langBtn").onclick=()=>{L=L==="zh"?"en":"zh";localStorage.setItem("qm_lang",L);applyLang();render()};
-
-async function loadSettings(){settings=await api("/api/settings");
-  $("#newEx").innerHTML=`<option value="">${t("blank")}</option>`+settings.examples.map(e=>`<option value="${e}">${t("fromEx")}${e}</option>`).join("")}
-$("#setBtn").onclick=async()=>{const v=prompt(t("blender"),settings.blender||"");if(v===null)return;settings=await post("/api/settings",{blender:v});render()};
-
-async function loadProjects(){
-  const ps=await api("/api/projects");
-  $("#plist").innerHTML=ps.map(p=>`<a href="#" data-p="${p.name}" class="${p.name===cur?"sel":""}">${esc(p.name)}${p.busy?" ⏳":""}</a>`).join("")||`<span class="mut">—</span>`;
-  $("#plist").querySelectorAll("a").forEach(a=>a.onclick=e=>{e.preventDefault();cur=a.dataset.p;localStorage.setItem("qm_proj",cur);refresh()});
-  if(!ps.find(p=>p.name===cur)) cur=ps.length?ps[0].name:"";
+function renderSide(){
+  $("#plist").innerHTML=projects.map(p=>{const dot=runOf(p.name)?'<i class="dot run"></i>':errs[p.name]?'<i class="dot err"></i>':"";
+    return `<a href="#" data-act="proj" data-p="${esc(p.name)}" class="${p.name===cur?"sel":""}"><span>${esc(p.name)}</span>${dot}</a>`}).join("")||`<span class="mut">—</span>`;
+  $("#exList").innerHTML=((settings&&settings.examples)||[]).map(x=>`<a href="#" data-act="example" data-x="${esc(x)}">${esc(x)}</a>`).join("")||`<span class="mut">—</span>`;
 }
-$("#newBtn").onclick=async()=>{
-  const name=$("#newName").value.trim()||($("#newEx").value||"rig");
-  try{const r=await post("/api/projects",{name,example:$("#newEx").value||null});cur=r.name;localStorage.setItem("qm_proj",cur);$("#newName").value="";
-    if(r.job) watch(r.job); refresh()}catch(e){alert(e.message)}
-};
-
-async function refresh(){await loadProjects(); P=cur?await api(`/api/projects/${cur}`).catch(()=>null):null; render()}
-
-const f=(rel)=>`/files/${cur}/${rel}?v=${Date.now()}`;
-function step(n,key,done,body){return `<div class="card ${done?"done":""}"><h2><span class="num">${done?"✓":n}</span>${t(key)}</h2><div class="mut">${t(key+"d")}</div>${body}</div>`}
-
+const card=(cls,title,sub,acts)=>`<div class="card hero ${cls}"><div class="ht"><h3>${title}</h3>${sub?`<div class="hs">${sub}</div>`:""}</div>${acts?`<div class="ha">${acts}</div>`:""}</div>`;
+const dlStart=()=>`<a class="btn pri" href="${f("start_frame/start_frame.png")}" download="start_frame.png">${ICON_UP.replace('d="M12 15V4M7 9l5-5 5 5','d="M12 4v11M7 10l5 5 5-5')}${t("dlStart")}</a>`;
+function hero(S,run,n){
+  if(settings&&!settings.blender)return card("err",t("noBlender"),t("noBlenderSub"),`<button class="pri" data-act="setBlender">${t("setBlender")}</button>`);
+  const e=errs[S.name];
+  if(e&&!run)return card("err",t("h_err",label(e)),`<div class="emsg">${esc(e.error||"")}</div>`,
+    `<button class="pri" data-act="continue">${t("retry")}</button>${e.id?`<button data-act="log" data-id="${e.id}">${t("log")}</button>`:""}`);
+  if(n&&n.block&&!run){const w=[S.config_error,...(S.config_warnings||[])].filter(Boolean);
+    return card("warn",t("h_cfg"),`${t("h_cfgSub")}${w.length?`<ul>${w.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>`:""}`,`<button class="pri" data-act="openCfg">${t("openCfg")}</button>`)}
+  if(run){const k=kind(run.title);
+    if(k.step==="build"&&S.start_frame)return card("",t("h_train"),t("h_trainSub"),dlStart());
+    return card("",t("h_run",label(k)),t("h_runSub"))}
+  if(n){if(ST.auto[S.name])return card("",t("h_queue",label(n)),"");
+    return card("",t("h_paused",label(n)),"",`<button class="pri" data-act="continue">${t("continue")}</button>`)}
+  if(!S.prepped)return"";
+  if(!(S.videos||[]).length)return card("",t("h_needVid"),t("h_needVidSub"),S.start_frame?dlStart():"");
+  return card("ok",t("h_done"),t("h_doneSub"));
+}
+const pill=s=>`<span class="pill ${s.k}">${s.k==="run"?`<i></i>${t("p_run")} <b data-pct="${s.id}">${s.q?t("queued"):Math.round(s.pct*100)+"%"}</b>`:t("p_"+s.k)}</span>`;
+function stage(no,title,s,body,adv){
+  return `<section class="card stage ${s.k==="done"?"done":""} ${s.k==="run"||s.k==="queue"||s.k==="block"?"active":""}">
+    <div class="sh"><span class="num">${s.k==="done"?"✓":no}</span><h2>${title}</h2>${pill(s)}</div>
+    ${body?`<div class="body">${body}</div>`:""}
+    ${adv?`<details class="adv" id="adv${no}"><summary>${t("adv")}</summary><div class="advb">${adv}</div></details>`:""}</section>`;
+}
+const chip=(lab,s)=>`<span class="chip ${s}">${s==="done"?"✓ ":""}${lab}</span>`;
 function render(){
-  const m=$("#main");
-  if(!P){m.innerHTML=`<div class="card mut">${t("blank")} → ${t("create")}</div>`;return}
-  const busy=P.busy||(job&&["queued","running"].includes(job.status)&&job.project===cur);
-  const dis=busy?"disabled":"";
-  let h="";
-  if(settings&&!settings.blender) h+=`<div class="card err">${t("noBlender")}</div>`;
-  // 1 rig
-  const rig=P.rig?`<div class="kv" style="margin-top:8px"><span>armature</span><span>${esc(P.rig.armature)}</span><span>mesh</span><span>${esc(P.rig.mesh)}</span>
-    <span>${t("verts")}</span><span>${P.rig.verts}</span><span>${t("bones")}</span><span>${P.rig.bones}</span><span>${t("kps")}</span><span>${P.keypoints??"-"}</span>
-    <span>${t("ref")}</span><span>${P.ref_poses?t("have"):t("none")}</span></div>`:"";
-  h+=step(1,"s1",P.prepped,`<div class="row"><input type="file" id="rigFile" accept=".blend,.fbx,.glb,.gltf">
-    <label><input type="checkbox" id="regen"> ${t("regen")}</label><button class="pri" id="rigBtn" ${dis}>${t("upload")}</button>
-    ${P.source?`<button id="reprep" ${dis}>${t("reprep")}</button>`:""}</div>${rig}
-    ${P.config_error?`<div class="err">${esc(P.config_error)}</div>`:""}
-    ${(P.config_warnings||[]).length?`<div class="warn">${P.config_warnings.map(esc).join("<br>")}</div>`:""}
-    ${P.config?`<details style="margin-top:8px" id="cfgDet"><summary>${t("cfg")}</summary><div class="mut">${t("cfgd")}</div>
-      <textarea id="cfgText" spellcheck="false"></textarea><div class="row"><button class="pri" id="cfgSave">${t("save")}</button><span id="cfgMsg"></span></div></details>`:""}`);
+  renderSide();
+  const m=$("#main"),open=[...m.querySelectorAll("details[open][id]")].map(d=>d.id);
+  const S=projects.find(p=>p.name===cur);
+  if(!S){m.innerHTML=`<div class="drop big" data-act="pickRig" tabindex="0"><span class="ic">${ICON_UP}</span><b>${t("emptyTitle")}</b><span>${t("emptySub")}</span><small>${t("pick")}</small></div>`;return}
+  const run=runOf(S.name),rk=run?kind(run.title):null,n=nextStep(S),auto=!!ST.auto[S.name],e=errs[S.name],vids=S.videos||[];
+  const busy=!!(run||S.busy);
+  const st=(no,done,ready)=>rk&&rk.s===no?{k:"run",pct:run.progress,id:run.id,q:run.status==="queued"}:done?{k:"done"}:e&&e.s===no?{k:"err"}:auto&&ready?{k:"queue"}:{k:"wait"};
+  let h=hero(S,run,n);
+  const projAdv=`<details class="adv" id="advP" style="margin:4px 0 0"><summary>${t("project")}: ${esc(S.name)}</summary><div class="advb"><button class="danger" data-act="delProj" ${busy?"disabled":""}>${t("delProj")}</button></div></details>`;
+  if(!S.source&&!S.prepped&&!run){
+    m.innerHTML=h+`<div class="drop big" data-act="pickRig" tabindex="0"><span class="ic">${ICON_UP}</span><b>${t("emptyTitle")}</b><span>${t("emptySub")}</span><small>${t("pick")}</small></div>`+projAdv;return}
+  // 1 character
+  let s1=st(1,S.prepped&&!(n&&n.block));if(n&&n.block&&s1.k!=="run")s1={k:"block"};
+  const r=S.rig;
+  const b1=(r?`<div class="sum"><b>${esc(r.armature)}</b> · ${esc(r.mesh)} · ${r.bones} ${t("bones")} · ${S.keypoints??"-"} ${t("kps")} · ${r.verts} ${t("verts")}</div>`:"")+
+    (S.config_error?`<div class="wlist err">${esc(S.config_error)}</div>`:"")+((S.config_warnings||[]).length?`<div class="wlist">${S.config_warnings.map(esc).join("<br>")}</div>`:"");
+  const a1=`<div class="row"><button data-act="reimport">${t("reimport")}</button><label><input type="checkbox" id="regen"> ${t("regen")}</label></div>
+    ${S.source?`<div class="row"><button data-act="reprep">${t("reprep")}</button></div>`:""}
+    ${S.config?`<hr><details id="cfgDet"><summary>${t("cfg")}</summary><div class="sub">${t("cfgd")}</div><textarea id="cfgText" spellcheck="false"></textarea>
+      <div class="row"><button class="pri" data-act="cfgSave">${t("save")}</button><span id="cfgMsg"></span></div></details>`:""}`;
+  h+=stage(1,t("st1"),s1,b1,a1);
   // 2 start frame
-  const ok1=P.prepped&&P.config;
-  h+=step(2,"s2",P.start_frame,`<div class="row"><button class="pri" id="sfBtn" ${ok1&&!busy?"":"disabled"}>${t("run")}</button>
-    ${P.start_frame?`<a href="${f("start_frame/start_frame.png")}" download="start_frame.png">${t("download")} start_frame.png</a> · <a href="${f("start_frame/cameras.json")}" download>cameras.json</a>`:""}</div>
-    ${P.start_frame?`<img class="thumb" src="${f("start_frame/start_frame.png")}" alt="${t("startHint")}">`:""}`);
-  // 3 data + train
-  const ev=P.eval?`<div class="mut">${t("evalTxt")}: ${P.eval.px_mean.toFixed(1)} / ${P.eval.px_median.toFixed(1)} · PCK@10px ${(P.eval.pck_10px*100).toFixed(0)}%</div>`:"";
-  h+=step(3,"s3",P.model,`<div class="row">${t("samples")} <input type="number" id="nSamp" value="${P.render_samples||1500}" min="1">
-    ${t("workers")} <input type="number" id="nWork" value="3" min="1" max="8">
-    ${t("steps")} <input type="number" id="nSteps" value="${P.train_steps||6000}" min="10">
-    <span class="mut">(${t("rec")}: 1500 / 3 / 6000)</span></div>
-    <div class="row">${P.samples>0?`<label><input type="checkbox" id="reuse"> ${t("reuse")}</label>`:""}
-    <button class="pri" id="buildBtn" ${ok1&&!busy?"":"disabled"}>${t("run")}</button>
-    <span class="mut">${t("haveData")}: ${P.samples}</span>
-    ${P.model?`<a href="${f("model/head.pt")}" download>head.pt</a>`:""}</div>${ev}`);
-  // 5 videos
-  const okv=P.model&&P.start_frame&&!busy;
-  let vids=P.videos.map(v=>{
-    const r=v.report?`<span class="mut">${t("resid")}: ${t("front")} ${v.report.kp_px_median.front.toFixed(1)} · ${t("side")} ${v.report.kp_px_median.side.toFixed(1)} (${v.report.mode})</span>`:"";
-    return `<div class="vid" data-v="${v.id}"><div class="row"><b>${esc(v.id)}</b><span class="mut">${v.size?v.size.join("×"):""} · ${v.frames||"?"}f</span>
-      <select class="vmode"><option value="ours">${t("ours")}</option><option value="triangulate">${t("tri")}</option></select>
-      <button class="pri vdet" ${okv?"":"disabled"}>${t("detect")}</button>
-      <button class="vprev" ${v.fitted&&!busy?"":"disabled"}>${t("preview")}</button>
-      <button class="vexp" ${v.fitted&&!busy?"":"disabled"}>${t("export")}</button>
-      <button class="vdel" ${dis}>${t("del")}</button></div>
-      <div class="row">${r} ${v.blend?`<a href="${f(`videos/${v.id}/fit/mocap.blend`)}" download>mocap.blend</a>`:""} ${v.fbx?`<a href="${f(`videos/${v.id}/fit/mocap.fbx`)}" download>mocap.fbx</a>`:""}</div>
-      ${v.compare?`<div class="mut">${t("compare")}</div><video controls loop muted src="${f(`videos/${v.id}/fit/compare.mp4`)}"></video>`:
-        `<video controls loop muted src="${f(`videos/${v.id}/source.mp4`)}" style="max-height:360px"></video>`}
-      ${v.overlay?`<details><summary>${t("overlay")}</summary><video controls loop muted src="${f(`videos/${v.id}/det/overlay.mp4`)}"></video></details>`:""}</div>`}).join("");
-  h+=step(4,"s5",P.videos.some(v=>v.fitted),`<div class="row"><input type="file" id="vidFile" accept="video/*"><button class="pri" id="vidBtn" ${dis}>${t("uploadV")}</button>
-    ${okv?"":`<span class="mut">(${busy?t("busy"):t("need")})</span>`}</div>${vids}`);
-  h+=`<div class="row"><button id="delProj" ${dis}>${t("del")} ${esc(cur)}</button></div>`;
-  m.innerHTML=h; bind();
+  const b2=S.start_frame?`<p class="hint">${t("sfHint")}</p><img class="thumb" src="${f("start_frame/start_frame.png")}" alt=""><div class="row" style="margin-top:12px">${dlStart()}</div>`
+    :`<p class="hint">${t("sfWait")}</p>`;
+  const a2=`<div class="row"><button data-act="redoSf" ${S.prepped?"":"disabled"}>${t("redoSf")}</button>
+    ${S.start_frame?`<a href="${f("start_frame/cameras.json")}" download>cameras.json</a>`:""}</div>`;
+  h+=stage(2,t("st2"),st(2,S.start_frame,S.prepped&&!(n&&n.block)),b2,a2);
+  // 3 training
+  const ev=S.eval?`<div class="sum">${t("evalTxt")}: <b>${S.eval.px_mean.toFixed(1)} / ${S.eval.px_median.toFixed(1)}</b> · PCK@10px <b>${(S.eval.pck_10px*100).toFixed(0)}%</b></div>`:"";
+  const b3=S.model?ev:`<p class="hint">${t("trainHint")}${S.start_frame?"":" "+t("trainWait")}</p>`;
+  const a3=`<div class="row"><label>${t("samples")} <input type="number" id="nSamp" value="${S.render_samples||1500}" min="1"></label>
+    <label>${t("workers")} <input type="number" id="nWork" value="3" min="1" max="8"></label>
+    <label>${t("steps")} <input type="number" id="nSteps" value="${S.train_steps||6000}" min="10"></label></div>
+    <div class="sub">${t("rec")}: 1500 / 3 / 6000 · ${t("haveData")}: ${S.samples}</div>
+    <div class="row">${S.samples>0?`<label><input type="checkbox" id="reuse"> ${t("reuse")}</label>`:""}</div>
+    <div class="row"><button data-act="retrain" ${S.start_frame?"":"disabled"}>${t("retrain")}</button>${S.model?`<a href="${f("model/head.pt")}" download>head.pt</a>`:""}</div>`;
+  h+=stage(3,t("st3"),st(3,S.model,S.start_frame),b3,a3);
+  // 4 videos
+  const vdone=v=>v.fitted&&v.fbx&&v.blend&&v.compare;
+  const vc=vids.map(v=>{
+    const vr=rk&&rk.s===4&&rk.v===v.id?rk.step:null,ve=e&&e.s===4&&e.v===v.id?e.step:null;
+    const cs=(step,done)=>vr===step?"run":ve===step?"err":done?"done":"";
+    const rep=v.report?`<div class="cap">${t("resid")}: ${t("front")} ${v.report.kp_px_median.front.toFixed(1)} · ${t("side")} ${v.report.kp_px_median.side.toFixed(1)} (${esc(v.report.mode)})</div>`:"";
+    const dl=(v.fbx||v.blend)?`<div class="row">${v.fbx?`<a class="btn pri" href="${f(`videos/${v.id}/fit/mocap.fbx`)}" download>mocap.fbx</a>`:""}${v.blend?`<a class="btn" href="${f(`videos/${v.id}/fit/mocap.blend`)}" download>mocap.blend</a>`:""}</div>`:"";
+    return `<div class="vid" data-v="${esc(v.id)}"><div class="vh"><b>${esc(v.id)}</b><span class="mut">${v.size?v.size.join("×"):""} · ${v.frames||"?"}f</span>
+      <span class="chips">${chip(t("c_fit"),cs("detect_fit",v.fitted))}${chip(t("c_export"),cs("export",v.fbx&&v.blend))}${chip(t("c_preview"),cs("preview",v.compare))}</span></div>
+      ${dl}
+      ${v.compare?`<div class="cap">${t("compare")}</div><video controls loop muted preload="metadata" src="${f(`videos/${v.id}/fit/compare.mp4`)}"></video>`
+        :`<video controls loop muted preload="metadata" src="${f(`videos/${v.id}/source.mp4`)}" style="max-height:360px"></video>`}
+      ${rep}
+      <details class="adv" id="advv_${esc(v.id)}"><summary>${t("adv")}</summary><div class="advb">
+        ${v.overlay?`<details id="ovl_${esc(v.id)}"><summary>${t("overlay")}</summary><video controls loop muted preload="metadata" src="${f(`videos/${v.id}/det/overlay.mp4`)}"></video></details><hr>`:""}
+        <div class="row"><label>${t("mode")} <select class="vmode"><option value="ours">${t("ours")}</option><option value="triangulate">${t("tri")}</option></select></label>
+        <button data-act="refit" data-v="${esc(v.id)}" ${S.model&&S.start_frame?"":"disabled"}>${t("refit")}</button>
+        <button class="danger" data-act="delVid" data-v="${esc(v.id)}" ${busy?"disabled":""}>${t("del")}</button></div></div></details></div>`}).join("");
+  const b4=`<div class="drop" data-act="pickVid" tabindex="0"><span class="ic">${ICON_VID}</span><b>${t("vidDrop")}</b><small>${t("vidDropSub")}</small></div>
+    ${vids.length&&!S.model?`<p class="hint" style="margin-top:10px">${t("vidWait")}</p>`:""}${vc}`;
+  h+=stage(4,t("st4"),st(4,vids.length&&vids.every(vdone),S.model&&vids.length),S.prepped?b4:"",null);
+  h+=projAdv;
+  m.innerHTML=h;
+  open.forEach(id=>{const d=document.getElementById(id);if(d)d.open=true});
+  const det=$("#cfgDet"),ta=$("#cfgText");
+  if(det){ta.oninput=()=>cfgDraft=ta.value;
+    det.ontoggle=async()=>{if(det.open&&!ta.value){ta.value=cfgDraft??(await api(`/api/projects/${cur}/config`)).text}}}
 }
 
-async function act(fn){try{const r=await fn();if(r&&r.job)watch(r.job);await refresh()}catch(e){alert(e.message)}}
-async function upload(url,file,extra={}){const fd=new FormData();fd.append("file",file);for(const k in extra)fd.append(k,extra[k]);
-  return api(url,{method:"POST",body:fd})}
-function bind(){
-  const on=(id,fn)=>{const e=$(id);if(e)e.onclick=fn};
-  on("#rigBtn",()=>{const fl=$("#rigFile").files[0];if(!fl)return;act(()=>upload(`/api/projects/${cur}/rig`,fl,{reset_config:$("#regen").checked?"1":"0"}))});
-  on("#reprep",()=>act(()=>post(`/api/projects/${cur}/run/prep`)));
-  on("#sfBtn",()=>act(()=>post(`/api/projects/${cur}/run/start_frame`)));
-  on("#buildBtn",()=>act(()=>post(`/api/projects/${cur}/run/build`,{samples:+$("#nSamp").value,workers:+$("#nWork").value,
-    steps:+$("#nSteps").value,reuse_data:!!($("#reuse")&&$("#reuse").checked)})));
-  on("#vidBtn",()=>{const fl=$("#vidFile").files[0];if(!fl)return;act(()=>upload(`/api/projects/${cur}/videos`,fl))});
-  on("#delProj",()=>{if(confirm(t("confirmDel")+" "+cur))act(()=>api(`/api/projects/${cur}`,{method:"DELETE"}))});
-  document.querySelectorAll(".vid").forEach(d=>{const v=d.dataset.v,q=s=>d.querySelector(s);
-    q(".vdet").onclick=()=>act(()=>post(`/api/projects/${cur}/videos/${v}/run/detect_fit`,{mode:q(".vmode").value}));
-    q(".vprev").onclick=()=>act(()=>post(`/api/projects/${cur}/videos/${v}/run/preview`));
-    q(".vexp").onclick=()=>act(()=>post(`/api/projects/${cur}/videos/${v}/run/export`));
-    q(".vdel").onclick=()=>{if(confirm(t("confirmDel")+" "+v))act(()=>api(`/api/projects/${cur}/videos/${v}`,{method:"DELETE"}))};});
-  const det=$("#cfgDet");
-  if(det) det.ontoggle=async()=>{if(det.open&&!$("#cfgText").value){const c=await api(`/api/projects/${cur}/config`);$("#cfgText").value=c.text}};
-  on("#cfgSave",async()=>{try{const r=await api(`/api/projects/${cur}/config`,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({text:$("#cfgText").value})});
-    $("#cfgMsg").innerHTML=r.warnings.length?`<span class="warn">${r.warnings.map(esc).join("<br>")}</span>`:`<span class="ok">${t("saved")}</span>`}catch(e){$("#cfgMsg").innerHTML=`<span class="err">${esc(e.message)}</span>`}});
+/* ---------- job strip ---------- */
+function panelJobPick(){
+  const by=id=>id&&!closed.has(id)&&jobs.find(j=>j.id===id);
+  return by(panelJob)||jobs.find(j=>ACTIVE(j.status)&&j.project===cur)||jobs.find(j=>ACTIVE(j.status))||by(lastEnded)||null;
 }
-
-function watch(id){job={id,status:"queued"};jobNext=0;$("#log").textContent="";$("#job").style.display="block";clearInterval(poll);poll=setInterval(tick,1000);tick()}
-async function tick(){
-  let j; try{j=await api(`/api/jobs/${job.id}?since=${jobNext}`)}catch(e){return}
-  const wasActive=["queued","running"].includes(job.status); job=j; jobNext=j.next;
-  $("#jobTitle").textContent=`${j.project} · ${j.title}`;
-  $("#jobStage").textContent=` ${j.stage} (${j.stage_index+1}/${j.stages}) · ${j.elapsed}s`;
-  $("#jobPct").innerHTML=j.status==="done"?`<span class="ok">${t("jobDone")}</span>`:j.status==="error"||j.status==="cancelled"?`<span class="err">${t("jobErr")}: ${esc(j.error)}</span>`:`${(j.progress*100).toFixed(1)}%`;
-  $("#jobBar").style.width=(j.progress*100)+"%";
-  if(j.lines.length){const lg=$("#log");const stick=lg.scrollTop+lg.clientHeight>=lg.scrollHeight-20;lg.textContent+=j.lines.join("\n")+"\n";
-    if(lg.textContent.length>200000)lg.textContent=lg.textContent.slice(-150000); if(stick)lg.scrollTop=lg.scrollHeight}
-  $("#jobCancel").disabled=!["queued","running"].includes(j.status);
-  if(!["queued","running"].includes(j.status)){clearInterval(poll); if(wasActive) refresh()}
+async function updatePanel(){
+  const j=panelJobPick(),box=$("#job");
+  document.querySelectorAll("[data-pct]").forEach(el=>{const r=jobs.find(x=>x.id===el.dataset.pct);if(r)el.textContent=r.status==="queued"?t("queued"):Math.round(r.progress*100)+"%"});
+  if(!j){box.hidden=true;return}
+  box.hidden=false;
+  if(logFor!==j.id){logFor=j.id;logNext=0;$("#log").textContent=""}
+  const act=ACTIVE(j.status);box.classList.toggle("active",act);
+  $("#jobTitle").textContent=`${j.project} · ${label(kind(j.title))}`;
+  $("#jobStage").textContent=act?(j.stage?`${j.stage} (${j.stage_index+1}/${j.stages}) · ${fmt(j.elapsed)}`:""):(j.status==="done"?fmt(j.elapsed):(j.error||""));
+  $("#jobPct").innerHTML=j.status==="done"?`<span class="ok">${t("jobDone")}</span>`:act?(j.status==="queued"?t("queued"):`${(j.progress*100).toFixed(1)}%`):`<span class="err">${t("jobErr")}</span>`;
+  $("#jobBar").style.width=(j.status==="done"?100:j.progress*100)+"%";
+  $("#jobCancel").hidden=!act;$("#jobClose").hidden=act;
+  $("#log").hidden=!logOpen;$("#jobLog").textContent=logOpen?t("hideLog"):t("log");
+  if(logOpen){try{const d=await api(`/api/jobs/${j.id}?since=${logNext}`);if(logFor!==j.id)return;logNext=d.next;
+    if(d.lines.length){const lg=$("#log"),stick=lg.scrollTop+lg.clientHeight>=lg.scrollHeight-20;lg.textContent+=d.lines.join("\n")+"\n";
+      if(lg.textContent.length>200000)lg.textContent=lg.textContent.slice(-150000);if(stick)lg.scrollTop=lg.scrollHeight}}catch(e){}}
 }
-$("#jobCancel").onclick=()=>post(`/api/jobs/${job.id}/cancel`);
-$("#jobHide").onclick=()=>$("#job").style.display="none";
+$("#jobLog").onclick=()=>{logOpen=!logOpen;updatePanel()};
+$("#jobCancel").onclick=()=>{const j=panelJobPick();if(j)post(`/api/jobs/${j.id}/cancel`).catch(e=>toast(e.message,false,"err"))};
+$("#jobClose").onclick=()=>{const j=panelJobPick();if(j)closed.add(j.id);if(panelJob===(j&&j.id))panelJob=null;logOpen=false;updatePanel()};
 
-(async()=>{applyLang();await loadSettings();await refresh();
-  const js=await api("/api/jobs");const a=js.find(j=>["queued","running"].includes(j.status));if(a)watch(a.id)})();
+/* ---------- actions ---------- */
+function pushTask(p,k){(ST.tasks[p]=ST.tasks[p]||[]).push(k);armAuto(p);save()}
+document.addEventListener("keydown",e=>{const d=e.target.closest&&e.target.closest(".drop");if(d&&(e.key==="Enter"||e.key===" ")){e.preventDefault();d.click()}});
+document.addEventListener("click",async e=>{
+  const a=e.target.closest("[data-act]");if(!a||a.disabled)return;
+  if(a.tagName==="A")e.preventDefault();
+  const act=a.dataset.act,p=cur,S=projects.find(x=>x.name===p);
+  try{switch(act){
+    case "lang":L=L==="zh"?"en":"zh";try{localStorage.setItem("qm_lang",L)}catch(_){}applyLang();render();updatePanel();break;
+    case "setBlender":{const v=prompt(t("blender"),(settings&&settings.blender)||"");if(v===null)return;settings=await post("/api/settings",{blender:v});await refresh();break}
+    case "proj":setCur(a.dataset.p);render();updatePanel();refresh();break;
+    case "example":{const name=uniqueName(a.dataset.x),r=await post("/api/projects",{name,example:a.dataset.x});setCur(name);armAuto(name);if(r.job)seen[r.job]="queued";await refresh();break}
+    case "pickRig":pick(RIG_EXT.join(","));break;
+    case "pickVid":pick("video/*,"+VID_EXT.join(","));break;
+    case "continue":armAuto(p);await refresh();break;
+    case "log":panelJob=a.dataset.id;closed.delete(panelJob);logOpen=true;updatePanel();break;
+    case "openCfg":{const ad=$("#adv1"),cd=$("#cfgDet");if(ad)ad.open=true;if(cd){cd.open=true;cd.scrollIntoView({behavior:"smooth",block:"start"})}break}
+    case "reimport":{const regen=!!($("#regen")&&$("#regen").checked);
+      pick(RIG_EXT.join(","),async fs=>{try{await importRig(fs[0],p,regen)}catch(err){toast(err.message,false,"err")}await refresh()});break}
+    case "reprep":pushTask(p,{step:"prep"});await refresh();break;
+    case "redoSf":pushTask(p,{step:"start_frame"});await refresh();break;
+    case "retrain":pushTask(p,{step:"build",body:{samples:+$("#nSamp").value,workers:+$("#nWork").value,steps:+$("#nSteps").value,reuse_data:!!($("#reuse")&&$("#reuse").checked)}});await refresh();break;
+    case "refit":{const v=a.dataset.v,mode=a.closest(".vid").querySelector(".vmode").value;
+      pushTask(p,{step:"detect_fit",v,body:{mode}});pushTask(p,{step:"export",v});pushTask(p,{step:"preview",v});await refresh();break}
+    case "delVid":{const v=a.dataset.v;if(!confirm(t("confirmDel")+" "+v))return;
+      await api(`/api/projects/${p}/videos/${v}`,{method:"DELETE"});ST.tasks[p]=(ST.tasks[p]||[]).filter(k=>k.v!==v);save();await refresh();break}
+    case "delProj":if(!confirm(t("confirmDel")+" "+p))return;
+      await api(`/api/projects/${p}`,{method:"DELETE"});delete ST.auto[p];delete ST.tasks[p];delete ST.inflight[p];delete errs[p];save();setCur("");await refresh();break;
+    case "cfgSave":{const ta=$("#cfgText");
+      try{const r=await api(`/api/projects/${p}/config`,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({text:ta.value})});
+        cfgDraft=null;$("#cfgMsg").innerHTML=r.warnings.length?`<span class="warn">${r.warnings.map(esc).join("<br>")}</span>`:`<span class="ok">${t("saved")}</span>`;
+        if(!r.warnings.length)setTimeout(refresh,600)}
+      catch(err){$("#cfgMsg").innerHTML=`<span class="err">${esc(err.message)}</span>`}break}
+  }}catch(err){toast(err.message,false,"err")}
+});
+
+(async()=>{applyLang();
+  try{settings=await api("/api/settings")}catch(e){settings={blender:"",examples:[]}}
+  await pollJobs(true);await refresh();setInterval(()=>pollJobs(false),1200)})();
 </script>
 </body>
 </html>

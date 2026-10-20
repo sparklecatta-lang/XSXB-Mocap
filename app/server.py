@@ -222,7 +222,7 @@ def project_status(p):
 
 
 # ---------------------------------------------------------------- app
-app = FastAPI(title="quadmocap")
+app = FastAPI(title="XSXB MOCAP")
 
 
 @app.get("/api/settings")
