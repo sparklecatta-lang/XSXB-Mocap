@@ -24,6 +24,7 @@ This repository is an independent re-implementation with the changes listed belo
 | Fitting target | Triangulate 3D points from the two views, then fit bones to the 3D points | Fit bones **directly to the 2D detections in both views** (reprojection error), no triangulation step |
 | Signal | Sparse keypoints | Keypoints **+ dense surface correspondences**: the head also predicts, per pixel, the rest-pose position on the mesh; those pixels are matched to mesh vertices (KD-tree) and the skinned vertices are fitted too |
 | Video drift | — | The video model's front panel drifts (zoom / moves toward the camera). The fitter solves a **smooth per-frame scale + vertical shift** for the front panel |
+| Training data | — | 30 % of the synthetic samples carry **afterimages** like fast motion in generated video: faint copies of nearby limb / tail poses. Labels and mask come from the main pose only, so the detector learns to ignore the ghosts |
 | Evaluation | — | **Synthetic ground-truth benchmark**: render the rig's own animation with the same cameras, run the whole pipeline, measure 3D error |
 | Rig | One creature | **Any rigged quadruped** through one JSON config (bone names, keypoints, joint limits, helper bones, orientation) |
 
@@ -38,23 +39,28 @@ Same detections, same rig, only the fitting method differs (`fit.py --mode ours`
 
 | Method | All keypoints | Limbs | Tail |
 |---|---|---|---|
-| Triangulate, then fit (original) | 4.38 | 5.29 | 3.60 |
-| **Ours** (2D + surface, drift correction) | **3.63** | **4.41** | **2.86** |
+| Triangulate, then fit (original) | 3.87 | 4.69 | 2.75 |
+| **Ours** (2D + surface, drift correction) | **3.58** | **4.29** | **2.51** |
 
 ![Bar chart of the table above](examples/cat/benchmark/chart.svg)
 
-About 17 % lower error overall. Data and script: [`examples/cat/benchmark`](examples/cat/benchmark),
-`python src/eval_synth.py ...` (see the README there). The pelvis itself (always 0 after alignment) is excluded.
-A fresh end-to-end re-run with `src/synth_benchmark.py` (walk cycle, every 2nd frame, new render and detection) gives
-the same picture: ours 3.53 / 4.30 / 2.65 cm vs. triangulation 4.41 / 5.28 / 3.64 cm (all / limbs / tail).
+About 8 % lower error overall, 9 % on limbs. The pelvis itself (always 0 after alignment) is excluded.
+Data and commands: [`examples/cat/benchmark`](examples/cat/benchmark), see [the example README](examples/cat/README.md#benchmark);
+`src/synth_benchmark.py` runs the whole procedure (render → video → detect → fit both ways → evaluate) for any project.
+With the previous detector (trained without afterimages) on the same video the gap was larger: ours 3.53 / 4.30 / 2.65 cm
+vs. triangulation 4.41 / 5.28 / 3.64 cm (all / limbs / tail). The new detector mostly helps triangulation; our fit stays
+about the same.
 
 **Real Seedance video (example cat, 193 frames)** — no ground truth, so this is the median 2D distance between the fitted
 rig's keypoints and the detections (px, 834×556 panels):
 
 | Method | Front panel | Side panel |
 |---|---|---|
-| Triangulate, then fit | 10.4 | 8.3 |
-| **Ours** | **10.2** | **7.2** |
+| Triangulate, then fit | 9.7 | 8.9 |
+| **Ours** | **9.0** | **7.5** |
+
+Previous detector: triangulation 10.4 / 8.3, ours 10.2 / 7.2. A second clip (0° camera tilt, 193 frames) gives
+triangulation 10.3 / 9.3, ours 9.4 / 8.2 (previous detector: 11.5 / 9.1 and 10.4 / 8.1).
 
 ## Requirements
 
@@ -89,7 +95,8 @@ If Blender is not found automatically, set its path under **Settings**. Each ste
 2. **Start frame** — renders the start image: top = front view, bottom = left side, same orthographic scale, plus
    `cameras.json`. Give the image to an image-to-video model as the first frame.
 3. **Training data + train** (one run) — random poses inside the joint limits rendered in two views (RGB, a
-   rest-position map, keypoint labels), then a small convolutional head is trained on a frozen DINOv2 backbone.
+   rest-position map, keypoint labels; 30 % with afterimages), then a small convolutional head is trained on a
+   frozen DINOv2 backbone.
    The defaults are the recommended values: 1500 samples, 3 Blender workers, 6000 steps (≈ 40 min on an RTX 5060 Ti).
    Tick *reuse existing training data* to retrain only.
 4. **Upload video → Detect + fit → Preview → Export** — detection overlay, fitted-vs-source comparison video,
@@ -123,6 +130,7 @@ python src/fit.py --project PROJECT --pred PROJECT/videos/x/det/pred.npz --out P
 blender -b PROJECT/rig/clean.blend --python src/bl_apply.py -- PROJECT PROJECT/videos/x/fit blend|fbx|render [W H]
 python src/compose_compare.py video.mp4 PROJECT/videos/x/fit
 python src/synth_benchmark.py --project PROJECT --blender path/to/blender   # synthetic ground-truth benchmark
+#   options: --stride 4 --blur 5 (faster, motion-blurred video)  --ckpt other/head.pt  --name output_folder
 ```
 
 ## Rig config
@@ -206,8 +214,11 @@ The example result is **not perfect**:
 - **Airborne frames** of the run float slightly too high.
 - **No foot locking** yet, so feet can slide during contact.
 - The video model's front panel drifts (≈5 % zoom, moves toward the camera); the drift correction absorbs part of it.
-- The detector was trained on 1500 synthetic samples only; synthetic-test error is 9.8 px mean / 4.2 px median
-  (448 px crops), worst on tail tip and hind toes.
+- The detector was trained on 1500 synthetic samples only (30 % with afterimages); held-out synthetic error is
+  10.0 px mean / 4.4 px median (448 px crops, afterimage samples included), worst on tail tip and hind toes.
+- The afterimage training has been checked on synthetic data and on two real clips that have few afterimages; it has
+  not yet been tested on a clip with heavy afterimages. Motion blur is not simulated, and a synthetic fast,
+  motion-blurred walk (`--stride 4 --blur 5`) is about 5.8 cm with either detector.
 - Generic-rig support has been tested on the cat and on a procedural blocky test rig
   ([`tests/make_test_rig.py`](tests/make_test_rig.py): `.L/.R` names, other facing axis, scaled object, two meshes) —
   not yet on many real rigs. The draft config's joint limits are generic and usually need editing.

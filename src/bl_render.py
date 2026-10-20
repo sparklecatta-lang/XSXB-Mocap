@@ -2,6 +2,10 @@
 blender -b <project>/rig/clean.blend --python src/bl_render.py -- PROJECT START COUNT SEED [nodraw]
 Per sample: random pose inside the joint limits -> deformation metric -> 2 cameras (front-ish, side-ish)
  -> EEVEE RGB (transparent bg) + Workbench rest-position map (16-bit, Raw) + 2D/3D keypoint labels.
+A fraction of samples (render.motion_fraction) imitates the afterimages of fast motion in generated video:
+the main pose plus 1-2 faint copies of nearby poses. Limbs (side-token bones) and smooth chains (tail) move fast,
+the trunk and head barely, so the copies show up as extra limbs / tails, not as a dragged camera. Labels, the
+rest-position map and the mask always come from the main pose, so ghost-only pixels are "not the animal".
 'nodraw' only samples poses and writes the deformation metric (for threshold tuning).
 """
 import bpy, sys, os, math, json, numpy as np
@@ -38,6 +42,9 @@ HAS_REF = os.path.exists(PATHS["poses"])
 LIM = [None if (L := Q.bone_limits_deg(cfg, n, names)) is None else np.radians(np.array(L, float)) for n in names]
 HELP = [(i, IDX[s[0]], s[1]) for i, n in enumerate(names) if (s := Q.helper_source(cfg, n, names))]
 CHAINS = Q.chains(cfg, names)
+_tok = cfg.get("side_tokens") or []
+_chain_idx = {i for idx, _ in CHAINS for i in idx}
+FAST = np.array([1.0 if any(t in n for t in _tok) or i in _chain_idx else 0.25 for i, n in enumerate(names)])
 LTOK = (cfg.get("side_tokens") or [None])[0]
 MSIGN = np.array(cfg["mirror_sign"], float)
 FWD, LEFT = Vector(Q.axis(cfg["orientation"]["forward"])), Vector(Q.axis(cfg["orientation"]["left"]))
@@ -74,23 +81,56 @@ def sample_pose():
     return e
 
 
-def apply_pose(e):
+BASE_LOC = arm.location.copy()
+
+
+def set_pose(e, body_rot, body_off=(0, 0, 0)):
     for i, n in enumerate(names):
         pb = arm.pose.bones[n]
         pb.rotation_mode = 'XZY'
         pb.location = (0, 0, 0)
         pb.rotation_euler = Euler((e[i, 0], e[i, 1], e[i, 2]), 'XZY')
+    arm.rotation_mode = 'XYZ'
+    arm.rotation_euler = body_rot
+    arm.location = BASE_LOC + Vector(body_off)
+    bpy.context.view_layer.update()
+
+
+def apply_pose(e):
     pitch = math.radians(rng.uniform(-RC["body_pitch_deg"], RC["body_pitch_deg"]))
     roll = math.radians(rng.uniform(-RC["body_roll_deg"], RC["body_roll_deg"]))
-    arm.rotation_mode = 'XYZ'
-    arm.rotation_euler = (Matrix.Rotation(roll, 3, FWD) @ Matrix.Rotation(pitch, 3, LEFT)).to_euler('XYZ')
-    bpy.context.view_layer.update()
+    rot = (Matrix.Rotation(roll, 3, FWD) @ Matrix.Rotation(pitch, 3, LEFT)).to_euler('XYZ')
+    set_pose(e, rot)
+    return rot
+
+
+def sample_motion(e):
+    """Per-bone angular step (limbs / tail fast, trunk slow) + a tiny body shift for one frame of fast motion."""
+    speed = rng.uniform(0.15, 0.5)
+    d = np.zeros_like(e)
+    for i, L in enumerate(LIM):
+        if L is not None:
+            d[i] = rng.normal(0, 1, 3) * (L[:, 1] - L[:, 0]) * 0.5 * speed * FAST[i] * np.array([1.0, 0.3, 0.5])
+    for i, src, fac in HELP:
+        d[i] = fac * d[src]
+    dv = rng.normal(0, 0.01, 3) * SIZE
+    return d, dv
+
+
+def sub_pose(e, d, u):
+    x = e + u * d
+    for i, L in enumerate(LIM):
+        if L is not None: x[i] = np.clip(x[i], L[:, 0], L[:, 1])
+    for i, src, fac in HELP:
+        x[i] = fac * x[src]
+    return x
 
 
 # ---------------- deformation metric (edge stretch vs rest)
 m = me.data
 EDGES = np.empty(len(m.edges) * 2, np.int32); m.edges.foreach_get("vertices", EDGES); EDGES = EDGES.reshape(-1, 2)
 R0 = np.load(PATHS["rig"])["verts"]
+SIZE = float(np.ptp(R0, 0).max())
 L0 = np.linalg.norm(R0[EDGES[:, 0]] - R0[EDGES[:, 1]], axis=1) + 1e-9
 
 
@@ -194,6 +234,14 @@ bg = next(n for n in world.node_tree.nodes if n.type == 'BACKGROUND')
 sun_d = bpy.data.lights.new("Sun", 'SUN'); sun = bpy.data.objects.new("Sun", sun_d); sc.collection.objects.link(sun)
 
 
+def set_lighting():
+    g = rng.uniform(0.3, 1.0)
+    bg.inputs[0].default_value = (g, g * rng.uniform(0.9, 1.05), g * rng.uniform(0.85, 1.1), 1)
+    bg.inputs[1].default_value = rng.uniform(0.4, 1.5)
+    sun_d.energy = rng.uniform(1.0, 5.0)
+    sun.rotation_euler = Euler((math.radians(rng.uniform(0, 70)), 0, rng.uniform(0, 2 * math.pi)))
+
+
 def render_rgb(path):
     sc.render.engine = 'BLENDER_EEVEE'
     sc.eevee.taa_render_samples = 16
@@ -202,13 +250,41 @@ def render_rgb(path):
     sc.render.image_settings.file_format = 'PNG'
     sc.render.image_settings.color_mode = 'RGBA'
     sc.render.image_settings.color_depth = '8'
-    g = rng.uniform(0.3, 1.0)
-    bg.inputs[0].default_value = (g, g * rng.uniform(0.9, 1.05), g * rng.uniform(0.85, 1.1), 1)
-    bg.inputs[1].default_value = rng.uniform(0.4, 1.5)
-    sun_d.energy = rng.uniform(1.0, 5.0)
-    sun.rotation_euler = Euler((math.radians(rng.uniform(0, 70)), 0, rng.uniform(0, 2 * math.pi)))
     sc.render.filepath = path
     bpy.ops.render.render(write_still=True)
+
+
+def read_premult(path):
+    im = bpy.data.images.load(path)
+    px = np.array(im.pixels[:], np.float32).reshape(RES, RES, 4)
+    bpy.data.images.remove(im)
+    px[..., :3] *= px[..., 3:4]
+    return px
+
+
+def write_unpremult(px, path):
+    a = px[..., 3:4]
+    out = px.copy(); out[..., :3] = np.where(a > 1e-6, px[..., :3] / np.maximum(a, 1e-6), 0)
+    im = bpy.data.images.new("comp", RES, RES, alpha=True)
+    im.alpha_mode = 'STRAIGHT'
+    im.pixels[:] = np.clip(out, 0, 1).ravel()
+    im.filepath_raw = path; im.file_format = 'PNG'; im.save()
+    bpy.data.images.remove(im)
+
+
+def render_ghost_rgb(path, e, d, dv, rot):
+    """Main pose over 1-2 faint copies of nearby poses (afterimages)."""
+    tmp = os.path.abspath(path[:-4] + "_tmp.png")
+    set_pose(e, rot); render_rgb(tmp); main = read_premult(tmp)
+    ghosts = []
+    for _ in range(int(rng.integers(1, 3))):
+        u = rng.choice([-1, 1]) * rng.uniform(0.6, 1.0)
+        set_pose(sub_pose(e, d, u), rot, u * dv); render_rgb(tmp); ghosts.append(read_premult(tmp))
+    g = np.mean(ghosts, 0) * rng.uniform(0.25, 0.5)
+    comp = main + g * (1 - main[..., 3:4])                         # main pose stays opaque over the ghost
+    if os.path.exists(tmp): os.remove(tmp)
+    set_pose(e, rot)                                               # back to the main pose for labels/dense
+    write_unpremult(comp, path)
 
 
 def render_dense(path):
@@ -231,19 +307,27 @@ def render_dense(path):
 # ---------------- main loop
 labels = []
 for s in range(START, START + COUNT):
-    e = sample_pose(); apply_pose(e)
+    e = sample_pose(); rot = apply_pose(e)
+    r = rng.random(); mf = float(RC.get("motion_fraction", 0.3))
+    motion = "ghost" if r < mf else None
     if s == START:
         require(skin_error(arm, me, PATHS["rig"]), f"sample {s}")
     V = deformed_verts()
     frac, rmax, rmin = deform_metric(V)
-    rec = {"id": s, "euler": e.tolist(), "arm_rot": list(arm.rotation_euler), "deform": [frac, rmax, rmin]}
+    rec = {"id": s, "euler": e.tolist(), "arm_rot": list(arm.rotation_euler), "deform": [frac, rmax, rmin], "motion": motion}
+    if motion and not NODRAW:
+        d, dv = sample_motion(e)
     if not NODRAW:
         X = kp3d(); views = []
         for v in range(2):
             setup_camera(V, v)
             P, Vw = proj_mats()
             stem = f"{OUT}/{s:05d}_v{v}"
-            render_rgb(stem + "_rgb.png")
+            set_lighting()
+            if motion:
+                render_ghost_rgb(stem + "_rgb.png", e, d, dv, rot)
+            else:
+                render_rgb(stem + "_rgb.png")
             render_dense(stem + "_dense.png")
             views.append({"P": P.tolist(), "V": Vw.tolist(), "ortho": cam_data.type == 'ORTHO',
                           "kp2d": to_pixels(X).tolist()})

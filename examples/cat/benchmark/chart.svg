@@ -12,18 +12,18 @@
 <line class="g" x1="503.3" x2="503.3" y1="60" y2="254"/><text class="t2" x="503.3" y="268" text-anchor="middle">5</text>
 <line class="g" x1="580.0" x2="580.0" y1="60" y2="254"/><text class="t2" x="580.0" y="268" text-anchor="middle">6</text>
 <text class="t1" x="110" y="88.0" text-anchor="end">All keypoints</text>
-<path class="s2" d="M120,64 h332.0 a4,4 0 0 1 4,4 v10 a4,4 0 0 1 -4,4 h-332.0 z"><title>triangulate: 4.38 cm</title></path>
-<text class="t1" x="462.0" y="77">4.38</text>
-<path class="s1" d="M120,86 h274.1 a4,4 0 0 1 4,4 v10 a4,4 0 0 1 -4,4 h-274.1 z"><title>ours: 3.63 cm</title></path>
-<text class="t1" x="404.1" y="99">3.63</text>
+<path class="s2" d="M120,64 h292.8 a4,4 0 0 1 4,4 v10 a4,4 0 0 1 -4,4 h-292.8 z"><title>triangulate: 3.87 cm</title></path>
+<text class="t1" x="422.8" y="77">3.87</text>
+<path class="s1" d="M120,86 h270.6 a4,4 0 0 1 4,4 v10 a4,4 0 0 1 -4,4 h-270.6 z"><title>ours: 3.58 cm</title></path>
+<text class="t1" x="400.6" y="99">3.58</text>
 <text class="t1" x="110" y="150.0" text-anchor="end">Limbs</text>
-<path class="s2" d="M120,126 h401.3 a4,4 0 0 1 4,4 v10 a4,4 0 0 1 -4,4 h-401.3 z"><title>triangulate: 5.29 cm</title></path>
-<text class="t1" x="531.3" y="139">5.29</text>
-<path class="s1" d="M120,148 h334.3 a4,4 0 0 1 4,4 v10 a4,4 0 0 1 -4,4 h-334.3 z"><title>ours: 4.41 cm</title></path>
-<text class="t1" x="464.3" y="161">4.41</text>
+<path class="s2" d="M120,126 h355.7 a4,4 0 0 1 4,4 v10 a4,4 0 0 1 -4,4 h-355.7 z"><title>triangulate: 4.69 cm</title></path>
+<text class="t1" x="485.7" y="139">4.69</text>
+<path class="s1" d="M120,148 h325.0 a4,4 0 0 1 4,4 v10 a4,4 0 0 1 -4,4 h-325.0 z"><title>ours: 4.29 cm</title></path>
+<text class="t1" x="455.0" y="161">4.29</text>
 <text class="t1" x="110" y="212.0" text-anchor="end">Tail</text>
-<path class="s2" d="M120,188 h271.7 a4,4 0 0 1 4,4 v10 a4,4 0 0 1 -4,4 h-271.7 z"><title>triangulate: 3.60 cm</title></path>
-<text class="t1" x="401.7" y="201">3.60</text>
-<path class="s1" d="M120,210 h215.3 a4,4 0 0 1 4,4 v10 a4,4 0 0 1 -4,4 h-215.3 z"><title>ours: 2.86 cm</title></path>
-<text class="t1" x="345.3" y="223">2.86</text>
+<path class="s2" d="M120,188 h206.9 a4,4 0 0 1 4,4 v10 a4,4 0 0 1 -4,4 h-206.9 z"><title>triangulate: 2.75 cm</title></path>
+<text class="t1" x="336.9" y="201">2.75</text>
+<path class="s1" d="M120,210 h188.5 a4,4 0 0 1 4,4 v10 a4,4 0 0 1 -4,4 h-188.5 z"><title>ours: 2.51 cm</title></path>
+<text class="t1" x="318.5" y="223">2.51</text>
 </svg>

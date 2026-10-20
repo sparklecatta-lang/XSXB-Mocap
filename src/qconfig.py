@@ -25,7 +25,8 @@ DEFAULTS = {
     "start_frame": {"panel_width": 1536, "panel_height": 1024, "tilt_deg": 8.0,
                     "ortho_width_m": None, "aim_height_m": None},   # null = derived from the mesh size
     "render": {"resolution": 448, "samples": 1500, "workers": 3, "near_ref_fraction": 0.45,
-               "symmetric_fraction": 0.3, "body_pitch_deg": 35, "body_roll_deg": 15},
+               "symmetric_fraction": 0.3, "body_pitch_deg": 35, "body_roll_deg": 15,
+               "motion_fraction": 0.3},          # share of samples with afterimages of fast limb / tail motion
     "train": {"steps": 6000, "batch": 16, "lr": 1e-3, "max_deform": 0.02, "backbone": "weights/dinov2-base",
               "held_out": 100},
     "fit": {"iters": 1500, "dense_iters": 1500, "w_dense": 0.5, "w_smooth": 200.0, "front_drift": True},
