@@ -4,569 +4,799 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>XSXB MOCAP</title>
-<meta name="application-name" content="XSXB MOCAP">
-<meta name="theme-color" content="#F5F1E8">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23002FA7'/%3E%3Cpath d='M10 10l12 12M22 10L10 22' stroke='%23F5F1E8' stroke-width='3.4' stroke-linecap='round'/%3E%3C/svg%3E">
 <style>
 :root{
   color-scheme:light;
-  --bg:#F5F1E8;--card:#FFFDF8;--sunk:#EFE9DC;--line:#E2DACA;--line2:#D3C9B4;
-  --fg:#1E1C18;--fg2:#3F3B33;--mut:#6A6458;
-  --acc:#002FA7;--acc-h:#00238A;--acc-a:#001C6E;--acc-t:#E3E8F4;--acc-ring:rgba(0,47,167,.22);
-  --ok:#1F7A45;--ok-t:#E3F0E6;--warn:#8A5A00;--warn-t:#F6EBD2;--err:#B3261E;--err-t:#F7E1DE;
-  --r:10px;--r-lg:14px;
-  --sh:0 1px 2px rgba(40,32,16,.05),0 2px 8px rgba(40,32,16,.04);
-  --sh-up:0 -6px 24px rgba(40,32,16,.10);
-  --mono:ui-monospace,"Cascadia Mono",Consolas,"Microsoft YaHei UI",monospace;
+  --bg:#F5F1E8;--paper:#FFFDF8;--stage:#ECE4D4;--sunk:#EDE6D8;--line:#E4DCCB;--line2:#D2C7B1;
+  --ink:#1B1915;--ink2:#4A453C;--mut:#7A7366;
+  --k:#002FA7;--k-h:#0038C4;--k-d:#00227A;--k-t:#E4E9F5;--k-t2:#CCD6EE;
+  --ok:#1F7A45;--warn:#9A6300;--err:#B3261E;--err-t:#F8E3DF;
+  --r:14px;--r-lg:22px;--r-xl:28px;
+  --sh:0 1px 2px rgba(45,35,15,.04),0 8px 24px -8px rgba(45,35,15,.10);
+  --sh-h:0 2px 4px rgba(45,35,15,.05),0 18px 40px -12px rgba(45,35,15,.20);
+  --disp:"Segoe UI Variable Display","Segoe UI",system-ui,-apple-system,"PingFang SC","Microsoft YaHei UI",sans-serif;
+  --text:"Segoe UI Variable Text","Segoe UI",system-ui,-apple-system,"PingFang SC","Microsoft YaHei UI",sans-serif;
+  --mono:"Cascadia Mono",Consolas,ui-monospace,monospace;
 }
 *{box-sizing:border-box}
-[hidden]{display:none!important}
-body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.55 "Segoe UI Variable Text","Segoe UI",system-ui,-apple-system,"PingFang SC","Microsoft YaHei UI","Microsoft YaHei",sans-serif;overflow-x:hidden}
-::selection{background:var(--acc);color:#fff}
-a{color:var(--acc);text-decoration:none;font-weight:500}
-a:hover{text-decoration:underline;text-underline-offset:2px}
-.mut{color:var(--mut)} .warn{color:var(--warn)} .err{color:var(--err)} .ok{color:var(--ok)}
-.sp{flex:1}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:15px/1.55 var(--text);-webkit-font-smoothing:antialiased;overflow-x:hidden}
+button{font:inherit;color:inherit;cursor:pointer;border:0;background:none;padding:0}
+button:disabled{cursor:default}
+a{color:inherit;text-decoration:none}
+input,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2.5px solid var(--k);outline-offset:2px}
+.screen{animation:fade .35s ease}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 
-/* header */
-header{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;padding:12px 24px;background:rgba(245,241,232,.92);backdrop-filter:saturate(1.2) blur(8px);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
-.brand{display:flex;align-items:center;gap:10px}
-.logo{flex:none;display:grid;place-items:center;width:30px;height:30px;border-radius:8px;background:var(--acc)}
-header h1{margin:0;font-size:17px;font-weight:800;letter-spacing:.14em;white-space:nowrap}
-header h1 b{color:var(--acc)}
-header .tag{font-size:13px;color:var(--mut);padding-left:14px;border-left:1px solid var(--line2)}
-header .tools{display:flex;gap:8px}
+/* ---------- top bar ---------- */
+.top{display:flex;align-items:center;gap:16px;height:76px;padding:0 40px;max-width:1360px;margin:0 auto}
+.mark{display:flex;align-items:center;gap:12px;font:800 18px/1 var(--disp);letter-spacing:.2em;white-space:nowrap}
+.mark i{display:grid;place-items:center;width:34px;height:34px;border-radius:10px;background:var(--k)}
+.mark b{color:var(--k)}
+.top .sp{flex:1}
+.iconbtn{display:grid;place-items:center;height:40px;min-width:40px;padding:0 12px;border-radius:12px;color:var(--ink2);font-weight:600;font-size:14px}
+.iconbtn:hover{background:var(--sunk);color:var(--ink)}
+.wrap{max-width:1360px;margin:0 auto;padding:8px 40px 140px}
+@media (max-width:720px){.top{padding:0 16px;height:64px;gap:8px}.wrap{padding:4px 16px 140px}.mark{font-size:16px;letter-spacing:.14em}}
 
-/* layout */
-.wrap{display:grid;grid-template-columns:240px minmax(0,1fr);gap:20px;padding:20px 24px;max-width:1320px;margin:0 auto 140px}
-aside .card{position:sticky;top:76px}
-main{min-width:0}
-@media (max-width:820px){
-  .wrap{grid-template-columns:minmax(0,1fr);gap:14px;padding:14px 16px}
-  aside .card{position:static}
-  header{padding:10px 16px} header .tag{display:none}
-}
+/* ---------- headings ---------- */
+.h1{font:700 52px/1.05 var(--disp);letter-spacing:-.02em;margin:24px 0 10px;overflow-wrap:anywhere}
+.lead{font-size:18px;color:var(--ink2);margin:0 0 36px;max-width:60ch}
+.h2{font:700 28px/1.2 var(--disp);letter-spacing:-.01em;margin:0 0 20px;display:flex;align-items:baseline;gap:12px}
+.h2 small{font:600 16px/1 var(--text);color:var(--mut)}
+@media (max-width:720px){.h1{font-size:38px}.lead{font-size:16px;margin-bottom:24px}}
 
-/* cards */
-.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r-lg);padding:18px 20px;margin-bottom:16px;box-shadow:var(--sh)}
-.card h2{font-size:15px;font-weight:700;margin:0}
-aside h2.cap{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--mut);margin:0 0 10px}
-@media (max-width:560px){.card{padding:16px}}
+/* ---------- buttons ---------- */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;height:52px;padding:0 26px;border-radius:16px;font:700 16px/1 var(--text);transition:background .15s,transform .1s,box-shadow .15s;white-space:nowrap}
+.btn:active:not(:disabled){transform:translateY(1px)}
+.btn.k{background:var(--k);color:#fff;box-shadow:0 8px 20px -8px rgba(0,47,167,.55)}
+.btn.k:hover:not(:disabled){background:var(--k-h)}
+.btn.line{background:var(--paper);color:var(--ink);box-shadow:inset 0 0 0 1.5px var(--line2)}
+.btn.line:hover:not(:disabled){box-shadow:inset 0 0 0 1.5px var(--k);color:var(--k)}
+.btn.soft{background:var(--k-t);color:var(--k)}
+.btn.soft:hover{background:var(--k-t2)}
+.btn.big{height:64px;font-size:18px;border-radius:18px;padding:0 34px}
+.btn.wide{width:100%}
+.btn.sm{height:42px;padding:0 18px;font-size:14px;border-radius:12px}
+.btn:disabled{opacity:.55}
+.btn.k:disabled{opacity:1;background:var(--k-t2);color:var(--k);box-shadow:none}
+.linkbtn{color:var(--k);font-weight:600}
+.linkbtn:hover{text-decoration:underline}
 
-/* hero: what happens now */
-.hero{display:flex;flex-wrap:wrap;align-items:center;gap:12px 20px;border-left:4px solid var(--acc);padding:16px 20px}
-.hero .ht{flex:1 1 280px;min-width:0}
-.hero h3{margin:0;font-size:16px;font-weight:700}
-.hero .hs{margin-top:4px;color:var(--fg2);font-size:13px;line-height:1.6}
-.hero .ha{display:flex;flex-wrap:wrap;gap:8px}
-.hero.err{background:var(--err-t);border-color:#E9C2BC;border-left-color:var(--err)}
-.hero.err h3{color:var(--err)}
-.hero.warn{background:var(--warn-t);border-color:#E8D6AE;border-left-color:var(--warn)}
-.hero.ok{border-left-color:var(--ok)}
-.hero .emsg{font-family:var(--mono);font-size:12px;white-space:pre-wrap;overflow-wrap:anywhere;color:var(--fg2);max-height:120px;overflow:auto}
-.hero ul{margin:6px 0 0;padding-left:18px}
-
-/* stages */
-.sh{display:flex;align-items:center;gap:10px;min-width:0}
-.sh h2{min-width:0}
-.num{flex:none;display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;border:1.5px solid var(--line2);color:var(--mut);background:var(--card);font-size:12px;font-weight:700}
-.stage.active .num{border-color:var(--acc);color:var(--acc)}
-.stage.done .num{background:var(--acc);border-color:var(--acc);color:#fff}
-.stage .body{margin:10px 0 0 34px}
-.stage .hint{font-size:13px;line-height:1.6;color:var(--mut);max-width:78ch;margin:0 0 10px}
-@media (max-width:560px){.stage .body,.stage .adv{margin-left:0}}
-.pill{margin-left:auto;flex:none;display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:3px 10px;border-radius:99px;background:var(--sunk);color:var(--mut);white-space:nowrap}
-.pill.done{background:var(--acc-t);color:var(--acc)}
-.pill.run{background:var(--acc);color:#fff}
-.pill.queue{background:var(--sunk);color:var(--fg2)}
-.pill.err{background:var(--err-t);color:var(--err)}
-.pill.block{background:var(--warn-t);color:var(--warn)}
-.pill.run i,.dot.run{width:7px;height:7px;border-radius:50%;background:currentColor;animation:pulse 1.2s ease-in-out infinite}
+/* ---------- character wall ---------- */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:28px}
+@media (max-width:720px){.grid{grid-template-columns:1fr;gap:18px}}
+.card{position:relative;display:block;background:var(--paper);border-radius:var(--r-lg);box-shadow:var(--sh);overflow:hidden;transition:transform .2s,box-shadow .2s;cursor:pointer;text-align:left;width:100%}
+.card:hover{transform:translateY(-4px);box-shadow:var(--sh-h)}
+.shot{position:relative;aspect-ratio:4/3;background:var(--stage);overflow:hidden}
+.shot img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;mix-blend-mode:multiply}
+.ph{position:absolute;inset:0;display:grid;place-items:center;font:800 96px/1 var(--disp);color:var(--k-t2);text-transform:uppercase}
+.card .info{padding:18px 22px 22px}
+.card .name{font:700 24px/1.2 var(--disp);letter-spacing:-.01em;overflow-wrap:anywhere}
+.status{display:flex;align-items:center;gap:8px;margin-top:6px;font-size:15px;color:var(--ink2);font-weight:500}
+.status .d{flex:none;width:9px;height:9px;border-radius:50%;background:var(--line2)}
+.status.ready .d{background:var(--k)}
+.status.run .d{background:var(--k);animation:pulse 1.4s ease-in-out infinite}
+.status.todo .d{background:#C9A55A}
+.status.bad .d{background:var(--err)}
 @keyframes pulse{50%{opacity:.25}}
-.sum{font-size:13px;color:var(--fg2);overflow-wrap:anywhere}
-.sum b{color:var(--fg)}
-.wlist{font-size:13px;color:var(--warn);margin-top:6px}
+.card .bar{position:absolute;left:0;right:0;bottom:0;height:5px;background:var(--k-t)}
+.card .bar i{display:block;height:100%;background:var(--k);transition:width .6s}
+.newcard{background:var(--k);color:#F5F1E8;display:flex;flex-direction:column;justify-content:space-between;min-height:100%;padding:28px;box-shadow:0 16px 40px -18px rgba(0,47,167,.7)}
+.newcard:hover{background:var(--k-h)}
+.newcard .plus{width:64px;height:64px;border-radius:20px;border:2px solid rgba(245,241,232,.5);display:grid;place-items:center}
+.newcard .t{font:700 30px/1.15 var(--disp);letter-spacing:-.01em;margin-top:56px}
+.newcard .s{font-size:15px;opacity:.75;margin-top:8px}
+@media (max-width:720px){.newcard .t{margin-top:28px;font-size:26px}}
+.banner{display:flex;flex-wrap:wrap;align-items:center;gap:12px 20px;padding:18px 22px;border-radius:20px;background:var(--err-t);color:var(--err);font-weight:600;margin:0 0 28px}
+.banner .sp{flex:1}
 
-/* drop zones */
-.drop{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;text-align:center;border:2px dashed var(--line2);border-radius:var(--r-lg);background:var(--bg);padding:22px 16px;cursor:pointer;color:var(--fg2);font-size:13px;transition:border-color .15s,background .15s}
-.drop:hover{border-color:var(--acc);background:var(--acc-t)}
-.drop .ic{display:grid;place-items:center;width:38px;height:38px;border-radius:50%;background:var(--acc-t);color:var(--acc);margin-bottom:4px}
-.drop:hover .ic{background:var(--acc);color:#fff}
-.drop b{font-size:15px;color:var(--fg)}
-.drop small{color:var(--mut);font-size:12px}
-.drop.big{padding:64px 24px;background:var(--card)}
-.drop.big b{font-size:20px}
-.drop.big .ic{width:60px;height:60px}
-.drop.sm{padding:14px 10px;gap:2px}
-.drop.sm b{font-size:13px}
-.drop.sm .ic{width:28px;height:28px}
-#dragOv{position:fixed;inset:0;z-index:50;display:none;place-items:center;padding:24px;background:rgba(0,47,167,.92);color:#F5F1E8;pointer-events:none;text-align:center}
-#dragOv.on{display:grid}
-#dragOv .box{border:2px dashed rgba(245,241,232,.6);border-radius:24px;padding:48px 40px;max-width:560px}
-#dragOv b{display:block;font-size:26px;letter-spacing:.04em;margin-bottom:10px}
-#dragOv .sub{font-size:14px;line-height:1.8;opacity:.9}
+/* ---------- character page ---------- */
+.back{display:inline-flex;align-items:center;gap:8px;color:var(--ink2);font-weight:600;margin-top:8px;padding:8px 12px 8px 4px;border-radius:10px}
+.back:hover{color:var(--k)}
+.charhead{display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px 24px;margin:8px 0 28px}
+.charhead .h1{margin:0}
+.facts{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:6px}
+.fact{height:34px;display:inline-flex;align-items:center;gap:6px;padding:0 14px;border-radius:99px;background:var(--paper);box-shadow:inset 0 0 0 1px var(--line);font-size:14px;font-weight:600;color:var(--ink2)}
+.fact.link{color:var(--k);box-shadow:none;background:transparent;padding:0 6px}
+.fact.link:hover{text-decoration:underline}
 
-/* rows, fields, buttons */
-.row{display:flex;flex-wrap:wrap;gap:8px 10px;align-items:center;margin:8px 0}
-label{cursor:pointer;color:var(--fg2);font-size:13px;display:inline-flex;align-items:center;gap:6px}
-input[type=checkbox]{accent-color:var(--acc);width:15px;height:15px;margin:0}
-button,.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;font:inherit;font-size:13px;font-weight:600;line-height:1.2;padding:8px 14px;min-height:34px;border-radius:var(--r);border:1px solid var(--line2);background:var(--card);color:var(--fg);cursor:pointer;text-decoration:none;transition:background .15s,border-color .15s,color .15s}
-button:hover:not(:disabled),.btn:hover{border-color:var(--acc);color:var(--acc);text-decoration:none}
-button:active:not(:disabled),.btn:active{transform:translateY(1px)}
-button.pri,.btn.pri{background:var(--acc);border-color:var(--acc);color:#fff}
-button.pri:hover:not(:disabled),.btn.pri:hover{background:var(--acc-h);border-color:var(--acc-h);color:#fff}
-button.danger{color:var(--err);border-color:#E3C6C1;background:transparent}
-button.danger:hover:not(:disabled){background:var(--err-t);border-color:var(--err);color:var(--err)}
-button.ghost{background:transparent;border-color:transparent;color:var(--fg2)}
-button.ghost:hover:not(:disabled){background:var(--sunk);border-color:transparent;color:var(--fg)}
-button:disabled{opacity:.42;cursor:not-allowed}
-button:focus-visible,.btn:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,summary:focus-visible,a:focus-visible,.drop:focus-visible{outline:none;box-shadow:0 0 0 3px var(--acc-ring)}
-input,select,textarea{font:inherit;font-size:13px;padding:7px 10px;min-height:34px;border-radius:var(--r);border:1px solid var(--line2);background:#FFFEFB;color:var(--fg);max-width:100%}
-input:hover,select:hover,textarea:hover{border-color:#BFB49C}
-input[type=number]{width:96px;font-variant-numeric:tabular-nums}
-input[type=checkbox]{min-height:0;padding:0}
-textarea{width:100%;min-height:340px;font:12px/1.5 var(--mono);background:var(--sunk);resize:vertical}
+/* stepper */
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:36px}
+.step{display:flex;align-items:center;gap:14px;padding:16px 20px;border-radius:18px;background:var(--paper);box-shadow:inset 0 0 0 1px var(--line);font:700 17px/1.2 var(--disp);min-width:0}
+.step .n{flex:none;display:grid;place-items:center;width:36px;height:36px;border-radius:50%;background:var(--sunk);color:var(--mut);font:700 15px/1 var(--text)}
+.step small{display:block;font:500 13px/1.3 var(--text);color:var(--mut);margin-top:3px}
+.step.on{box-shadow:inset 0 0 0 2px var(--k);color:var(--k)}
+.step.on .n{background:var(--k);color:#fff}
+.step.done .n{background:var(--k-t);color:var(--k)}
+.step.wait{color:var(--mut)}
+a.step:hover{box-shadow:inset 0 0 0 1.5px var(--line2)}
+@media (max-width:720px){.steps{grid-template-columns:1fr 1fr 1fr;gap:6px}.step{flex-direction:column;align-items:flex-start;gap:8px;padding:12px;font-size:14px}.step small{display:none}}
 
-/* project list */
-.plist{display:flex;flex-direction:column;gap:2px}
-.plist a{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:var(--r);color:var(--fg2);font-weight:500;text-decoration:none;border-left:3px solid transparent}
-.plist a span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.plist a:hover{background:var(--sunk);color:var(--fg)}
-.plist a.sel{background:var(--acc-t);color:var(--acc);font-weight:700;border-left-color:var(--acc)}
-.dot{flex:none;width:7px;height:7px;border-radius:50%;color:var(--acc)}
-.dot.err{background:var(--err)}
-.sep{border:0;border-top:1px solid var(--line);margin:14px 0}
-.exl{display:flex;flex-direction:column;gap:2px;margin-top:6px}
-.exl a{padding:5px 8px;border-radius:8px;font-size:13px}
-.exl a:hover{background:var(--sunk);text-decoration:none}
+.two{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:40px;align-items:start}
+@media (max-width:980px){.two{grid-template-columns:1fr;gap:28px}}
+.panel{background:var(--paper);border-radius:var(--r-xl);box-shadow:var(--sh);padding:28px}
+@media (max-width:720px){.panel{padding:20px;border-radius:var(--r-lg)}}
+.center{display:grid;place-items:center;text-align:center;gap:14px;min-height:320px}
 
-/* advanced (collapsed) */
-details>summary{cursor:pointer;list-style:none;display:inline-flex;align-items:center;gap:6px;font-weight:600;font-size:13px;color:var(--acc);border-radius:6px}
-details>summary::-webkit-details-marker{display:none}
-details>summary::before{content:"";width:6px;height:6px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg);transition:transform .15s;margin-right:2px}
-details[open]>summary::before{transform:rotate(45deg)}
-.adv{margin:12px 0 0 34px}
-.adv>summary{color:var(--mut);font-size:12px}
-.adv>summary:hover{color:var(--fg)}
-.advb{margin-top:8px;padding:12px 14px;background:var(--bg);border:1px solid var(--line);border-radius:var(--r)}
-.advb .sub{font-size:13px;color:var(--mut);margin:4px 0}
-.advb hr{border:0;border-top:1px solid var(--line);margin:12px 0}
+/* live start-frame preview */
+.pvwrap{display:grid;place-items:center;background:var(--sunk);border-radius:var(--r-xl);padding:36px;min-height:520px}
+.pv{display:grid;gap:3px;background:#C9C2B3;border-radius:14px;overflow:hidden;box-shadow:0 20px 50px -24px rgba(45,35,15,.45);transition:all .35s ease;max-width:100%}
+.pv>div{position:relative;background:var(--stage);overflow:hidden;min-width:0;min-height:0}
+.pv>div .img{position:absolute;inset:0;background-repeat:no-repeat;background-size:cover;background-position:center;mix-blend-mode:multiply;transition:all .35s ease}
+.pv>div .ico{position:absolute;inset:0;display:grid;place-items:center;color:var(--line2)}
+.pv>div span{position:absolute;left:10px;top:10px;font:700 12px/1 var(--text);letter-spacing:.06em;color:var(--ink2);background:rgba(255,253,248,.85);padding:6px 9px;border-radius:8px}
+.pvcap{margin-top:18px;color:var(--mut);font-size:14px;font-weight:600;text-align:center}
+@media (max-width:720px){.pvwrap{min-height:0;padding:20px}}
 
-/* media */
-img.thumb{display:block;max-width:100%;max-height:380px;border-radius:var(--r);border:1px solid var(--line);background:var(--sunk)}
-video{display:block;max-width:100%;max-height:560px;margin-top:8px;border-radius:var(--r);background:#14130F}
-.vid{border:1px solid var(--line);border-radius:var(--r);background:var(--bg);padding:12px 14px;margin-top:12px}
-.vh{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px}
-.vh b{font-size:14px;overflow-wrap:anywhere}
-.chips{display:flex;flex-wrap:wrap;gap:6px;margin-left:auto}
-.chip{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;padding:2px 9px;border-radius:99px;background:var(--sunk);color:var(--mut)}
-.chip.done{background:var(--acc-t);color:var(--acc)}
-.chip.run{background:var(--acc);color:#fff}
-.chip.err{background:var(--err-t);color:var(--err)}
-.vid .adv{margin-left:0}
-.cap{font-size:12px;color:var(--mut);margin-top:8px}
+/* option tiles */
+.og{margin-bottom:28px}
+.og h3{font:700 18px/1.2 var(--disp);margin:0 0 12px}
+.tiles{display:grid;gap:10px}
+.tiles.c3{grid-template-columns:repeat(3,1fr)}
+.tiles.c2{grid-template-columns:repeat(2,1fr)}
+.tiles.c4{grid-template-columns:repeat(4,1fr)}
+.tile{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;min-height:112px;padding:16px 10px;border-radius:18px;background:var(--bg);box-shadow:inset 0 0 0 1.5px var(--line);font:700 15px/1.2 var(--text);color:var(--ink2);text-align:center;transition:all .15s;min-width:0}
+.tile:hover{box-shadow:inset 0 0 0 1.5px var(--line2);background:#F1ECE1}
+.tile.sel{background:var(--k-t);box-shadow:inset 0 0 0 2.5px var(--k);color:var(--k)}
+.tile.sel::after{content:"";position:absolute;top:10px;right:10px;width:20px;height:20px;border-radius:50%;background:var(--k) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M5.5 10.5l3 3 6-7' fill='none' stroke='white' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/20px}
+.tile svg{color:currentColor;flex:none}
+.tile small{font:500 12px/1.3 var(--text);color:var(--mut)}
+.tile.sel small{color:var(--k)}
+.ratio{border:2.5px solid currentColor;border-radius:5px}
+@media (max-width:720px){.tiles.c4{grid-template-columns:repeat(2,1fr)}.tile{min-height:96px;padding:14px 6px}.tiles.c3 .tile svg{width:40px;height:40px}}
 
-/* toasts */
-#toasts{position:fixed;top:68px;right:16px;z-index:40;display:flex;flex-direction:column;gap:8px;width:min(340px,calc(100vw - 32px))}
-.toast{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--acc);border-radius:var(--r);padding:10px 12px;box-shadow:0 6px 24px rgba(40,32,16,.12);font-size:13px;overflow-wrap:anywhere}
-.toast.err{border-left-color:var(--err)} .toast.ok{border-left-color:var(--ok)}
-.tbar{height:4px;background:var(--sunk);border-radius:99px;margin-top:8px;overflow:hidden}
-.tbar i{display:block;height:100%;width:0;background:var(--acc);transition:width .2s}
+/* quality tiles */
+.q{align-items:flex-start;text-align:left;padding:22px;min-height:170px;justify-content:flex-start;gap:4px}
+.q .min{font:700 46px/1 var(--disp);letter-spacing:-.03em;color:var(--ink);white-space:nowrap}
+.q .min em{font:600 15px/1 var(--text);font-style:normal;color:var(--mut);margin-left:4px}
+.q .nm{font:700 18px/1.2 var(--disp);margin-top:14px;color:var(--ink)}
+.q small{font-size:13px;margin-top:2px}
+.q.sel .min,.q.sel .nm{color:var(--k)}
+.q .tag{position:absolute;top:14px;right:14px;font:700 11px/1 var(--text);letter-spacing:.06em;padding:6px 9px;border-radius:8px;background:var(--k);color:#fff}
+.q.sel .tag{right:40px}
+@media (max-width:720px){.q{padding:14px 10px;min-height:140px}.q .min{font-size:32px}.q .min em{font-size:12px;margin-left:2px}.q .tag{display:none}.q .nm{font-size:16px}}
+.adv{margin:-8px 0 22px}
+.adv summary{cursor:pointer;color:var(--mut);font-weight:600;font-size:14px;list-style:none;display:inline-flex;gap:6px}
+.adv summary::-webkit-details-marker{display:none}
+.adv .f{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
+.adv label{font-size:13px;color:var(--mut);font-weight:600}
+.field{display:block;width:100%;height:44px;margin-top:6px;padding:0 14px;border-radius:12px;border:0;background:var(--bg);box-shadow:inset 0 0 0 1.5px var(--line)}
+.field:focus{outline:none;box-shadow:inset 0 0 0 2px var(--k)}
 
-/* bottom job strip */
-#job{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);box-shadow:var(--sh-up);padding:10px 24px 12px;z-index:6}
-#job>*{max-width:1272px;margin-left:auto;margin-right:auto}
-.jrow{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px}
-.jrow button{min-height:30px;padding:5px 12px}
-#jobTitle{font-size:14px;overflow-wrap:anywhere}
-#jobStage{font-size:13px;color:var(--mut);overflow-wrap:anywhere;min-width:0}
-#jobPct{font-weight:700;font-variant-numeric:tabular-nums;color:var(--acc)}
-.spin{display:none;flex:none;width:14px;height:14px;border-radius:50%;border:2px solid var(--acc-t);border-top-color:var(--acc);animation:spin .9s linear infinite}
-#job.active .spin{display:inline-block}
+/* start frame + prompt */
+.sf{display:flex;justify-content:center}
+.sf img{display:block;max-width:100%;max-height:640px;border-radius:var(--r-lg);mix-blend-mode:multiply}
+.prompt{margin-top:18px;background:var(--paper);border-radius:var(--r-lg);box-shadow:var(--sh);padding:22px 24px}
+.prompt .lab{display:flex;align-items:center;justify-content:space-between;gap:12px;font:700 15px/1.2 var(--disp);color:var(--mut);letter-spacing:.04em;margin-bottom:12px}
+.prompt p{margin:0;font:600 19px/1.6 var(--disp);color:var(--ink)}
+.row{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+
+/* training in progress */
+.train{display:flex;flex-direction:column;justify-content:center;min-height:100%}
+.eyebrow{font:700 13px/1 var(--text);letter-spacing:.14em;color:var(--k);text-transform:uppercase;display:flex;align-items:center;gap:10px}
+.eyebrow .d{width:9px;height:9px;border-radius:50%;background:var(--k);animation:pulse 1.4s infinite}
+.bignum{font:700 112px/.95 var(--disp);letter-spacing:-.05em;color:var(--k);margin:22px 0 4px}
+.bignum em{font:700 30px/1 var(--disp);letter-spacing:0;font-style:normal;margin-left:10px;color:var(--ink)}
+.track{height:12px;border-radius:99px;background:var(--k-t);overflow:hidden;margin:26px 0 12px}
+.track i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,var(--k),#2457D6);transition:width .8s}
+.tmeta{display:flex;justify-content:space-between;gap:12px;color:var(--mut);font-weight:600;font-size:14px}
+.tip{display:flex;gap:14px;align-items:flex-start;margin-top:34px;padding:18px 20px;border-radius:18px;background:var(--bg);font-size:16px;color:var(--ink2);font-weight:500}
+.tip b{color:var(--ink)}
+.tip.err{background:var(--err-t);color:var(--err)}
+.tip.err b{color:var(--err)}
+@media (max-width:720px){.bignum{font-size:80px}}
+
+/* prep summary (character ready) */
+.prep{display:flex;flex-wrap:wrap;align-items:center;gap:14px 28px;padding:18px 22px;border-radius:20px;background:var(--paper);box-shadow:inset 0 0 0 1px var(--line);margin-bottom:44px}
+.prep .ck{display:flex;align-items:center;gap:10px;font:700 16px/1.2 var(--disp)}
+.prep .ck i{flex:none;display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--k);color:#fff}
+.prep .sp{flex:1}
+
+/* action cards */
+.vgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:28px}
+@media (max-width:720px){.vgrid{grid-template-columns:1fr;gap:18px}}
+.vcard{position:relative;background:var(--paper);border-radius:var(--r-lg);box-shadow:var(--sh);overflow:hidden;transition:transform .2s,box-shadow .2s}
+.vcard:hover{transform:translateY(-4px);box-shadow:var(--sh-h)}
+.vshot{display:block;position:relative;aspect-ratio:3/2;background:var(--stage);overflow:hidden;width:100%}
+a.vshot{cursor:pointer}
+.vshot img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;mix-blend-mode:multiply}
+.vshot .play{position:absolute;inset:0;display:grid;place-items:center;opacity:0;transition:opacity .2s;background:rgba(27,25,21,.18)}
+.vshot .play i{display:grid;place-items:center;width:68px;height:68px;border-radius:50%;background:rgba(255,253,248,.95);color:var(--k);box-shadow:0 10px 30px -8px rgba(0,0,0,.4)}
+.vcard:hover .play{opacity:1}
+.vshot .badge{position:absolute;left:14px;top:14px;white-space:nowrap;height:30px;display:inline-flex;align-items:center;gap:7px;padding:0 12px;border-radius:99px;font:700 13px/1 var(--text);background:rgba(255,253,248,.92);color:var(--ink2)}
+.vshot .badge.ok{background:var(--k);color:#fff}
+.vshot .badge.bad{background:var(--err);color:#fff}
+.vshot .prog{position:absolute;left:0;right:0;bottom:0;padding:16px;background:linear-gradient(transparent,rgba(27,25,21,.55));color:#fff;font:700 15px/1 var(--text)}
+.vshot .prog .t{height:6px;border-radius:99px;background:rgba(255,255,255,.3);margin-top:10px;overflow:hidden}
+.vshot .prog .t i{display:block;height:100%;background:#fff;border-radius:99px;transition:width .6s}
+.vcard .info{display:flex;align-items:center;gap:14px;padding:16px 18px 18px 22px}
+.vcard .name{font:700 22px/1.2 var(--disp);letter-spacing:-.01em;overflow-wrap:anywhere}
+.vcard .meta{font-size:14px;color:var(--mut);font-weight:600;margin-top:2px}
+.vcard .info .sp{flex:1}
+.vcard .del{position:absolute;right:12px;top:12px;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:rgba(255,253,248,.92);color:var(--ink2);opacity:0;transition:opacity .2s}
+.vcard:hover .del,.vcard .del:focus-visible{opacity:1}
+.vcard .del:hover{color:var(--err)}
+@media (hover:none){.vcard .del{opacity:1}}
+.dropv{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;min-height:100%;padding:36px 24px;border-radius:var(--r-lg);border:2.5px dashed var(--k-t2);background:rgba(228,233,245,.35);color:var(--k);cursor:pointer;transition:all .15s;width:100%}
+.dropv:hover{background:var(--k-t);border-color:var(--k)}
+.dropv .ic{width:72px;height:72px;border-radius:22px;background:var(--k);color:#fff;display:grid;place-items:center;box-shadow:0 12px 28px -12px rgba(0,47,167,.7)}
+.dropv .t{font:700 22px/1.25 var(--disp)}
+.dropv .s{font-size:14px;color:var(--ink2);font-weight:500}
+
+/* lightbox */
+.lb{position:fixed;inset:0;z-index:30;background:rgba(20,19,15,.88);backdrop-filter:blur(6px);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px;gap:22px}
+.lb .vbox{position:relative;width:min(1100px,100%);border-radius:20px;overflow:hidden;background:#000;box-shadow:0 30px 80px -20px rgba(0,0,0,.6)}
+.lb video{display:block;width:100%;max-height:68vh;object-fit:contain;background:#DCDAD4}
+.lb .lab{position:absolute;top:14px;font:700 13px/1 var(--text);letter-spacing:.06em;color:#fff;background:rgba(20,19,15,.6);padding:8px 12px;border-radius:9px}
+.lb .bot{display:flex;flex-wrap:wrap;align-items:center;gap:14px 18px;width:min(1100px,100%);color:#F5F1E8}
+.lb .bot .name{font:700 26px/1.2 var(--disp)}
+.lb .bot .meta{font-size:14px;opacity:.65;font-weight:600}
+.lb .bot .sp{flex:1}
+.lb .x{position:absolute;top:22px;right:22px;width:48px;height:48px;border-radius:50%;background:rgba(245,241,232,.12);color:#F5F1E8;display:grid;place-items:center;z-index:1}
+.lb .x:hover{background:rgba(245,241,232,.22)}
+.btn.onDark{background:rgba(245,241,232,.12);color:#F5F1E8}
+.btn.onDark:hover{background:rgba(245,241,232,.2)}
+@media (max-width:720px){.lb{padding:72px 16px 24px}.lb .x{top:14px;right:14px}.lb .lab{top:8px;font-size:11px;padding:6px 8px}}
+
+/* job dock */
+.dock{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:20;display:flex;align-items:center;gap:14px;padding:10px 12px 10px 18px;border-radius:18px;background:var(--ink);color:#F5F1E8;box-shadow:0 18px 40px -12px rgba(0,0,0,.45);font-weight:600;font-size:14px;max-width:calc(100vw - 32px);white-space:nowrap}
+.dock>span:not(.ring){overflow:hidden;text-overflow:ellipsis}
+.dock .ring{flex:none;width:22px;height:22px;border-radius:50%;border:3px solid rgba(245,241,232,.2);border-top-color:#8FA8FF;animation:spin 1s linear infinite}
+.dock .bang{flex:none;width:22px;height:22px;border-radius:50%;background:var(--err);display:grid;place-items:center;font-weight:800}
 @keyframes spin{to{transform:rotate(360deg)}}
-#job .bar{height:6px;background:var(--sunk);border-radius:99px;overflow:hidden;margin-top:8px}
-#job .bar div{height:100%;background:var(--acc);width:0;border-radius:99px;transition:width .4s}
-#log{display:block;height:170px;overflow:auto;background:#1C1B17;color:#E9E3D4;padding:10px 12px;border-radius:var(--r);font:12px/1.45 var(--mono);white-space:pre-wrap;overflow-wrap:anywhere;margin-top:10px;margin-bottom:0}
-@media (max-width:820px){#job{padding:10px 16px}#log{height:120px}}
+.dock .m{opacity:.6;font-weight:500}
+.dock button{flex:none;height:34px;padding:0 12px;border-radius:10px;background:rgba(245,241,232,.1)}
+.dock button:hover{background:rgba(245,241,232,.2)}
+@media (max-width:720px){.dock .m{display:none}}
+
+/* sheets: model info / settings / log */
+.veil{position:fixed;inset:0;z-index:40;background:rgba(27,25,21,.35);display:flex;justify-content:flex-end}
+.sheet{width:min(560px,100%);height:100%;overflow:auto;background:var(--bg);box-shadow:-20px 0 60px -20px rgba(0,0,0,.35);padding:28px;animation:slide .25s ease}
+@keyframes slide{from{transform:translateX(30px);opacity:0}to{transform:none;opacity:1}}
+.sheet h2{font:700 28px/1.2 var(--disp);margin:0;flex:1}
+.sheet .hd{display:flex;align-items:center;gap:12px;margin-bottom:22px}
+.sheet h3{font:700 16px/1.2 var(--disp);margin:26px 0 10px}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:6px 18px;background:var(--paper);border-radius:18px;padding:16px 18px;box-shadow:inset 0 0 0 1px var(--line);font-size:14px}
+.kv dt{color:var(--mut);font-weight:600}.kv dd{margin:0;font-weight:600;overflow-wrap:anywhere}
+.warn{background:#FBF1DC;color:var(--warn);border-radius:14px;padding:12px 14px;font-size:13px;font-weight:600;margin-top:10px}
+.warn.err{background:var(--err-t);color:var(--err)}
+textarea.code{width:100%;min-height:340px;border:0;border-radius:16px;padding:14px;background:var(--paper);box-shadow:inset 0 0 0 1.5px var(--line);font:12.5px/1.5 var(--mono);resize:vertical}
+textarea.code:focus{outline:none;box-shadow:inset 0 0 0 2px var(--k)}
+pre.log{background:var(--ink);color:#E9E4D8;border-radius:16px;padding:14px;font:12px/1.5 var(--mono);white-space:pre-wrap;word-break:break-all;max-height:60vh;overflow:auto;margin:0}
+.ex{display:flex;flex-wrap:wrap;gap:8px}
+.mut{color:var(--mut)}
+.danger{color:var(--err)!important}
+
+/* drop overlay + toast */
+.dropov{position:fixed;inset:12px;z-index:50;border-radius:28px;border:3px dashed var(--k);background:rgba(228,233,245,.92);display:grid;place-items:center;pointer-events:none;font:700 32px/1.2 var(--disp);color:var(--k);text-align:center;padding:24px}
+.toast{position:fixed;left:50%;top:22px;transform:translateX(-50%);z-index:60;max-width:calc(100vw - 32px);padding:14px 20px;border-radius:16px;background:var(--ink);color:#F5F1E8;font-weight:600;box-shadow:0 18px 40px -12px rgba(0,0,0,.45);animation:fade .25s ease}
+.toast.err{background:var(--err)}
+.hide{display:none!important}
 </style>
 </head>
 <body>
-<header>
-  <div class="brand">
-    <span class="logo" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 16 16"><path d="M3 3l10 10M13 3L3 13" stroke="#F5F1E8" stroke-width="2.4" stroke-linecap="round"/></svg></span>
-    <h1>XSXB <b>MOCAP</b></h1>
-  </div>
-  <span class="tag" data-t="tagline"></span><span class="sp"></span>
-  <div class="tools"><button class="ghost" data-act="lang" id="langBtn"></button><button data-act="setBlender" data-t="settings"></button></div>
+
+<header class="top">
+  <a class="mark" href="#/"><i><svg width="16" height="16" viewBox="0 0 16 16"><path d="M3 3l10 10M13 3L3 13" stroke="#F5F1E8" stroke-width="2.6" stroke-linecap="round"/></svg></i>XSXB <b>MOCAP</b></a>
+  <span class="sp"></span>
+  <button class="iconbtn" data-act="lang" id="langBtn">EN</button>
+  <button class="iconbtn" data-act="settings" id="setBtn"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
 </header>
-<div class="wrap">
-  <aside><div class="card">
-    <h2 class="cap" data-t="projects"></h2>
-    <div class="plist" id="plist"></div>
-    <hr class="sep">
-    <div class="drop sm" data-act="pickRig" tabindex="0"><span class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span><b data-t="newRig"></b><small>.blend / .fbx / .glb</small></div>
-    <details class="adv" style="margin:12px 0 0"><summary data-t="fromEx"></summary><div class="exl" id="exList"></div></details>
-  </div></aside>
-  <main id="main"></main>
-</div>
-<div id="job" hidden>
-  <div class="jrow"><span class="spin"></span><b id="jobTitle"></b><span id="jobStage"></span><span class="sp"></span>
-    <span id="jobPct"></span><button class="ghost" id="jobLog"></button><button class="danger" id="jobCancel" data-t="cancel"></button><button class="ghost" id="jobClose" data-t="close"></button></div>
-  <div class="bar"><div id="jobBar"></div></div>
-  <pre id="log" hidden></pre>
-</div>
-<div id="toasts"></div>
-<div id="dragOv"><div class="box"><b data-t="dropTitle"></b><div class="sub" id="dragSub"></div></div></div>
-<input type="file" id="picker" multiple hidden>
+
+<main class="wrap" id="main"></main>
+<div id="lbHost"></div>
+<div id="dockHost"></div>
+<div id="sheetHost"></div>
+<div id="ovHost"></div>
+<input type="file" id="fModel" accept=".blend,.fbx,.glb,.gltf" class="hide" multiple>
+<input type="file" id="fVideo" accept="video/*,.mp4,.mov,.webm,.mkv" class="hide" multiple>
+<input type="file" id="fRig" accept=".blend,.fbx,.glb,.gltf" class="hide">
+
 <script>
-const T={
- zh:{tagline:"绑骨角色的视频动作捕捉",settings:"设置",projects:"角色项目",lang:"English",newRig:"拖入角色文件新建",fromEx:"从示例创建",
-  dropTitle:"松开即可上传",dropRig:"角色文件（.blend / .fbx / .glb）→ 新建项目",dropVid:"视频（.mp4 等）→ 加入「{0}」",
-  emptyTitle:"把绑好骨的角色拖进来",emptySub:"支持 .blend / .fbx / .glb。之后会自动导入、生成首帧图、训练识别模型。",pick:"也可以点这里选择文件",
-  st1:"角色",st2:"首帧图",st3:"训练识别模型",st4:"视频动捕",
-  p_done:"完成",p_run:"进行中",p_queue:"等待中",p_wait:"未开始",p_err:"失败",p_block:"需要处理",queued:"排队中",
-  sfHint:"上=正面，下=左侧面。把这张图作为首帧交给视频模型（如 Seedance），提示里写明上下两个画面完全同步。",sfWait:"角色导入后自动生成。",
-  dlStart:"下载首帧图",trainHint:"在关节限制内随机摆姿渲染训练数据，再训练识别模型。默认参数即推荐值，RTX 5060 Ti 约 40 分钟。",trainWait:"首帧图生成后自动开始。",
-  evalTxt:"测试误差 px（均值 / 中位数）",haveData:"已有训练数据",
-  vidDrop:"把生成好的双视角视频拖到这里",vidDropSub:"上=正面，下=侧面；可一次拖多个，自动检测、拟合、导出、出预览",vidWait:"识别模型训练好后会自动处理这些视频。",
-  c_fit:"拟合",c_export:"导出",c_preview:"预览",compare:"左：原视频　右：拟合结果",overlay:"检测叠加视频",resid:"关节残差中位数 px",front:"正面",side:"侧面",
-  adv:"高级选项",reimport:"重新导入角色文件…",regen:"同时重新生成配置草稿",reprep:"重新处理当前角色",cfg:"rig 配置（JSON）",
-  cfgd:"骨名、关键点、关节限制、辅助骨、朝向都在这里。改了 armature/mesh 要重新导入。",openCfg:"打开配置",save:"保存",saved:"已保存",
-  redoSf:"重新生成首帧图",samples:"渲染组数",workers:"并行 Blender",steps:"训练步数",rec:"推荐",reuse:"复用已有训练数据，只重新训练",retrain:"重新训练",
-  mode:"方法",ours:"我们的（2D + 表面对应）",tri:"原视频方式（三角化）",refit:"重新拟合",del:"删除",delProj:"删除这个项目",confirmDel:"确定删除？",project:"项目",
-  continue:"继续自动处理",retry:"重试",log:"日志",hideLog:"收起日志",cancel:"取消",close:"关闭",setBlender:"设置 Blender 路径",
-  blender:"Blender 路径（blender.exe）",noBlender:"没找到 Blender",noBlenderSub:"请填写 blender.exe 的路径，所有步骤都需要它。",
-  h_err:"「{0}」失败了",h_cfg:"角色配置需要检查",h_cfgSub:"改好后保存，会自动继续。",h_run:"正在{0}…",h_runSub:"可以离开去做别的，完成后会自动进行下一步。",
-  h_train:"首帧图好了，识别模型正在后台训练",h_trainSub:"现在就可以下载首帧图，交给 Seedance 生成上下双视角视频；生成好的视频直接拖进来，训练完会自动处理。",
-  h_queue:"马上开始：{0}",h_paused:"已暂停，下一步：{0}",h_needVid:"一切就绪，把生成好的视频拖进来",h_needVidSub:"每段视频会自动检测、拟合，并导出 FBX / .blend。",
-  h_done:"全部完成",h_doneSub:"在下面每段视频里下载 FBX / .blend；再拖入新视频会继续自动处理。",
-  k_prep:"导入角色",k_start_frame:"生成首帧图",k_build:"训练识别模型",k_detect_fit:"检测 + 拟合",k_export:"导出 FBX / .blend",k_preview:"生成预览",
-  uploading:"上传中：",uploaded:"已上传",badFile:"不支持的文件：",needProj:"请先拖入角色文件新建项目，再拖视频。",
-  jobDone:"完成",jobErr:"失败",cancelled:"已取消",noOutput:"这一步跑完了但没有生成结果，已暂停。请查看日志。",kps:"关键点",bones:"骨骼",verts:"顶点"},
- en:{tagline:"video motion capture for rigged characters",settings:"Settings",projects:"Projects",lang:"中文",newRig:"Drop a character to start",fromEx:"Start from an example",
-  dropTitle:"Drop to upload",dropRig:"Character file (.blend / .fbx / .glb) → new project",dropVid:"Video (.mp4 etc.) → add to “{0}”",
-  emptyTitle:"Drop your rigged character here",emptySub:".blend / .fbx / .glb. Import, start frame and model training then run automatically.",pick:"or click to choose a file",
-  st1:"Character",st2:"Start frame",st3:"Train detector",st4:"Video mocap",
-  p_done:"Done",p_run:"Running",p_queue:"Up next",p_wait:"Not started",p_err:"Failed",p_block:"Needs attention",queued:"queued",
-  sfHint:"Top = front view, bottom = left side. Give this image to the video model (e.g. Seedance) as the first frame and ask for both panels to stay in sync.",sfWait:"Made automatically after import.",
-  dlStart:"Download start frame",trainHint:"Renders random poses inside the joint limits, then trains the detector. Defaults are recommended (~40 min on an RTX 5060 Ti).",trainWait:"Starts automatically after the start frame.",
-  evalTxt:"Test error px (mean / median)",haveData:"Training data",
-  vidDrop:"Drop your two-view videos here",vidDropSub:"Top = front, bottom = side. Drop several at once: detect, fit, export and preview run automatically.",vidWait:"These videos are processed automatically once the detector is trained.",
-  c_fit:"Fit",c_export:"Export",c_preview:"Preview",compare:"Left: source · Right: fitted rig",overlay:"Detection overlay",resid:"Joint residual median px",front:"front",side:"side",
-  adv:"Advanced",reimport:"Re-import character file…",regen:"Also regenerate config draft",reprep:"Re-process current rig",cfg:"Rig config (JSON)",
-  cfgd:"Bone names, keypoints, joint limits, helper bones and orientation. Re-import after changing armature/mesh.",openCfg:"Open config",save:"Save",saved:"Saved",
-  redoSf:"Remake start frame",samples:"Samples",workers:"Blender workers",steps:"Training steps",rec:"recommended",reuse:"Reuse existing training data, only retrain",retrain:"Retrain",
-  mode:"Method",ours:"Ours (2D + surface correspondences)",tri:"Original (triangulate)",refit:"Re-fit",del:"Delete",delProj:"Delete this project",confirmDel:"Delete?",project:"Project",
-  continue:"Continue automatically",retry:"Retry",log:"Log",hideLog:"Hide log",cancel:"Cancel",close:"Close",setBlender:"Set Blender path",
-  blender:"Blender path (blender.exe)",noBlender:"Blender not found",noBlenderSub:"Set the path to blender.exe; every step needs it.",
-  h_err:"“{0}” failed",h_cfg:"The rig config needs a look",h_cfgSub:"Save your fix and it continues automatically.",h_run:"{0}…",h_runSub:"You can leave this page; the next step starts automatically.",
-  h_train:"Start frame ready, detector training in the background",h_trainSub:"Download the start frame and make the two-view video with Seedance now; drop the videos in and they are processed once training ends.",
-  h_queue:"Starting: {0}",h_paused:"Paused. Next: {0}",h_needVid:"All set: drop your videos in",h_needVidSub:"Each video is detected, fitted and exported to FBX / .blend automatically.",
-  h_done:"All done",h_doneSub:"Download FBX / .blend from each video below. New videos you drop are processed automatically.",
-  k_prep:"Importing character",k_start_frame:"Making start frame",k_build:"Training detector",k_detect_fit:"Detect + fit",k_export:"Export FBX / .blend",k_preview:"Render preview",
-  uploading:"Uploading: ",uploaded:"Uploaded",badFile:"Unsupported file: ",needProj:"Drop a character file first to create a project, then the videos.",
-  jobDone:"done",jobErr:"failed",cancelled:"cancelled",noOutput:"The step finished but produced no result; paused. Check the log.",kps:"keypoints",bones:"bones",verts:"verts"}};
-let L=localStorage.getItem("qm_lang")||"zh";
-const t=(k,...a)=>{let s=T[L][k]??T.zh[k]??k;a.forEach((x,i)=>s=s.replace("{"+i+"}",x));return s};
+/* ================= text ================= */
+const TX={
+ zh:{chars:"角色",lead:"拖入一个绑好骨的模型，给它做动作捕捉。",newChar:"拖入新角色",newCharS:".blend · .fbx · .glb，或点击选择文件",
+  ready:"可以用了 · {0} 段动作",readyNone:"可以用了 · 还没有动作",trainingLeft:"训练中 · 还剩 {0} 分钟",trainingQ:"训练中",importing:"正在导入模型…",
+  framing:"正在生成首帧图…",fitting:"正在拟合 · {0}%",queued:"排队中",nextFrame:"下一步：选择首帧",nextTrain:"下一步：训练",nextImport:"需要导入模型",
+  needCheck:"模型需要检查",failed:"上次任务失败",
+  builtin:"自带 {0} 段动作",info:"模型信息 ›",s1:"首帧图",s2:"训练",s3:"动作",s1sub:"选角度和画面",s2sub:"约 {0} 分钟",s2pick:"选精度",
+  s3sub:"拖入视频",s3n:"{0} 段",qname:{fast:"快",std:"标准",fine:"精细"},qsub:{fast:"先看看效果",std:"大多数动作",fine:"快速、复杂的动作"},
+  rec:"推荐",min:"分钟",views:"拍哪两个角度",layout:"两个画面怎么摆",ratio:"视频比例",common:"最常用",
+  V:{f:"正面",s:"侧面",t:"俯视"},L:{tb:"上下",lr:"左右"},LP:{tb:"上下",lr:"左右"},genFrame:"生成首帧图",genning:"正在生成… {0}%",
+  retrainNote:"改了角度、摆法或比例之后，需要重新训练。",quality:"训练精度",startTrain:"开始训练",retrain:"重新训练",
+  frameReady:"首帧图已经可以用了。训练期间就可以拿它去 Seedance 生成视频。",reframe:"重新选择首帧",adv:"高级设置",samples:"训练图片数",steps:"训练步数",
+  trainingNow:"正在训练",queuedNow:"排队中",etaCap:"预计还要这么久",doneP:"已完成 {0}%",used:"已用 {0} 分钟",
+  meanwhile:"<b>趁现在：</b>下载首帧图，复制右边的提示词，去 Seedance 生成视频。训练完把视频拖进来就行。",cancelTrain:"取消训练",
+  promptLab:"SEEDANCE 提示词",copy:"复制",copied:"已复制",dlFrame:"下载首帧图",
+  prompt:"{0}两个画面需要完全同步。拍摄角度完全固定，不要缩放，背景和地面不变。",
+  trainDone:"训练完成",framePrompt:"首帧图与提示词",actions:"动作",dropVid:"拖入生成好的视频",dropVidS:"可以一次拖多个",
+  done:"完成",notFit:"未拟合",fitFail:"失败",startFit:"开始拟合",busy:"处理中…",retry:"重试",dlFbx:"下载 FBX",dlBlend:"下载 .blend",
+  sec:"{0} 秒",frames:"{0} 帧",src:"原视频",res:"拟合结果",close:"关闭",
+  stg:["识别中","拟合中","生成对比视频","生成对比视频","导出中","导出中"],
+  importTitle:"正在导入模型",importSub:"自动识别骨骼和网格，通常不到一分钟。",importFail:"导入失败",importFailSub:"换一个文件试试，或打开模型信息看看原因。",
+  reimport:"重新导入模型文件",cfgTitle:"模型需要检查",cfgSub:"骨骼配置有问题，打开模型信息修改后保存即可。",openInfo:"打开模型信息",
+  noBlender:"没找到 Blender",noBlenderSub:"每一步都需要 Blender，请在设置里填写 blender.exe 的路径。",openSet:"打开设置",
+  settings:"设置",blenderPath:"Blender 路径（blender.exe）",save:"保存",saved:"已保存",examples:"从示例创建",exName:"新角色名字（字母、数字、_ 或 -）",
+  rig:"骨架",mesh:"网格",verts:"顶点",bones:"骨骼",kps:"关键点",accuracy:"识别精度（训练图）",pxMed:"中位误差 {0} px",cfg:"骨骼配置（JSON）",
+  cfgHint:"关键点、关节限制、朝向。改完保存即可。",delChar:"删除这个角色",delConfirm:"删除角色“{0}”和它的全部文件？",delVid:"删除这段视频？",
+  details:"详情",dismiss:"知道了",cancel:"取消",logTitle:"任务详情",left:"还剩 {0} 分钟",uploading:"正在上传 {0}…",
+  dropModel:"松手导入角色",dropVideo:"松手添加视频",needChar:"先打开一个训练好的角色，再拖入视频",notReady:"这个角色还没训练好，先完成训练",
+  jobT:{import_rig:"导入模型",prep:"导入模型",start_frame:"生成首帧图",build:"训练",train:"训练",render:"生成训练图",process:"拟合",detect_fit:"拟合",preview:"对比视频",export:"导出"},
+  failedT:"{0} 失败",lessMin:"<1",lang:"EN"},
+ en:{chars:"Characters",lead:"Drop in a rigged model and motion-capture it from video.",newChar:"Drop a new character",newCharS:".blend · .fbx · .glb, or click to choose",
+  ready:"Ready · {0} actions",readyNone:"Ready · no actions yet",trainingLeft:"Training · {0} min left",trainingQ:"Training",importing:"Importing model…",
+  framing:"Making the start frame…",fitting:"Fitting · {0}%",queued:"Queued",nextFrame:"Next: choose the start frame",nextTrain:"Next: train",nextImport:"Needs a model",
+  needCheck:"Model needs a look",failed:"Last job failed",
+  builtin:"{0} built-in actions",info:"Model info ›",s1:"Start frame",s2:"Train",s3:"Actions",s1sub:"Pick views and framing",s2sub:"About {0} min",s2pick:"Pick quality",
+  s3sub:"Drop videos",s3n:"{0} clips",qname:{fast:"Fast",std:"Standard",fine:"Fine"},qsub:{fast:"A first look",std:"Most motions",fine:"Fast, complex motion"},
+  rec:"BEST",min:"min",views:"Which two views",layout:"How the two panels sit",ratio:"Video ratio",common:"Most common",
+  V:{f:"Front",s:"Side",t:"Top"},L:{tb:"Stacked",lr:"Side by side"},LP:{tb:"top and bottom",lr:"left and right"},genFrame:"Make start frame",genning:"Making… {0}%",
+  retrainNote:"After changing views, layout or ratio you need to train again.",quality:"Training quality",startTrain:"Start training",retrain:"Train again",
+  frameReady:"The start frame is ready. Use it in Seedance while training runs.",reframe:"Choose start frame again",adv:"Advanced",samples:"Training images",steps:"Training steps",
+  trainingNow:"Training",queuedNow:"Queued",etaCap:"left, roughly",doneP:"{0}% done",used:"{0} min so far",
+  meanwhile:"<b>Meanwhile:</b> download the start frame, copy the prompt and make videos in Seedance. Drop them in when training is done.",cancelTrain:"Cancel training",
+  promptLab:"SEEDANCE PROMPT",copy:"Copy",copied:"Copied",dlFrame:"Download start frame",
+  prompt:"The {0} panels must stay perfectly in sync. Camera angles fixed, no zoom, background and floor unchanged.",
+  trainDone:"Trained",framePrompt:"Start frame & prompt",actions:"Actions",dropVid:"Drop generated videos",dropVidS:"Several at once is fine",
+  done:"Done",notFit:"Not fitted",fitFail:"Failed",startFit:"Start fitting",busy:"Working…",retry:"Retry",dlFbx:"Download FBX",dlBlend:"Download .blend",
+  sec:"{0} s",frames:"{0} frames",src:"Video",res:"Fit",close:"Close",
+  stg:["Detecting","Fitting","Making preview","Making preview","Exporting","Exporting"],
+  importTitle:"Importing the model",importSub:"Finds the skeleton and mesh, usually under a minute.",importFail:"Import failed",importFailSub:"Try another file, or open model info to see why.",
+  reimport:"Re-import model file",cfgTitle:"The model needs a look",cfgSub:"The bone config has a problem. Fix it in model info and save.",openInfo:"Open model info",
+  noBlender:"Blender not found",noBlenderSub:"Every step needs Blender. Set the path to blender.exe in Settings.",openSet:"Open settings",
+  settings:"Settings",blenderPath:"Blender path (blender.exe)",save:"Save",saved:"Saved",examples:"Start from an example",exName:"Name for the new character (letters, digits, _ or -)",
+  rig:"Armature",mesh:"Mesh",verts:"Vertices",bones:"Bones",kps:"Keypoints",accuracy:"Detector accuracy (training images)",pxMed:"median error {0} px",cfg:"Bone config (JSON)",
+  cfgHint:"Keypoints, joint limits, orientation. Save when done.",delChar:"Delete this character",delConfirm:"Delete “{0}” and all its files?",delVid:"Delete this video?",
+  details:"Details",dismiss:"OK",cancel:"Cancel",logTitle:"Job details",left:"{0} min left",uploading:"Uploading {0}…",
+  dropModel:"Drop to import the character",dropVideo:"Drop to add videos",needChar:"Open a trained character first, then drop videos",notReady:"This character is not trained yet",
+  jobT:{import_rig:"Import",prep:"Import",start_frame:"Start frame",build:"Training",train:"Training",render:"Training images",process:"Fitting",detect_fit:"Fitting",preview:"Preview",export:"Export"},
+  failedT:"{0} failed",lessMin:"<1",lang:"中文"}};
+let lang=(()=>{try{return localStorage.getItem("xs_lang")||"zh"}catch(e){return "zh"}})();
+const t=(k,...a)=>{let s=TX[lang][k]??TX.zh[k]??k;return typeof s==="string"?s.replace(/\{(\d)\}/g,(m,i)=>a[i]??""):s};
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const $=s=>document.querySelector(s);
-const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-const RIG_EXT=[".blend",".fbx",".glb",".gltf"],VID_EXT=[".mp4",".mov",".webm",".mkv",".avi",".m4v"];
-const ext=n=>(n.match(/\.[^.]+$/)||[""])[0].toLowerCase();
-const ACTIVE=s=>s==="queued"||s==="running";
-const fmt=s=>s<60?`${s}s`:s<3600?`${Math.floor(s/60)}m${String(s%60).padStart(2,"0")}s`:`${Math.floor(s/3600)}h${String(Math.floor(s%3600/60)).padStart(2,"0")}m`;
-const ICON_UP=`<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V4M7 9l5-5 5 5M4 20h16"/></svg>`;
-const ICON_VID=`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="13" height="14" rx="2"/><path d="M16 10l5-3v10l-5-3"/></svg>`;
 
-let cur=localStorage.getItem("qm_proj")||"",projects=[],settings=null,jobs=[],seen={};
-// auto: projects the user handed to the autopilot; tasks: explicit re-runs; inflight: the job the autopilot started
-let ST={auto:{},tasks:{},inflight:{}};try{Object.assign(ST,JSON.parse(localStorage.getItem("qm_state")||"{}"))}catch(e){}
-const save=()=>{try{localStorage.setItem("qm_state",JSON.stringify(ST))}catch(e){}};
-const setCur=p=>{if(p!==cur)cfgDraft=null;cur=p;try{localStorage.setItem("qm_proj",cur)}catch(e){}};
-let errs={},doneKeys={},piloting=false,panelJob=null,lastEnded=null,closed=new Set(),logOpen=false,logFor=null,logNext=0,cfgDraft=null;
+/* ================= icons ================= */
+const I={
+ back:`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>`,
+ plus:`<svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>`,
+ check:`<svg width="14" height="14" viewBox="0 0 20 20"><path d="M5 10.5l3 3 6-7" fill="none" stroke="white" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+ dl:s=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12M7 11l5 5 5-5M5 20h14"/></svg>`,
+ play:`<svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13l11-6.5z"/></svg>`,
+ video:`<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="13" height="14" rx="2.5"/><path d="M16 10l5-3v10l-5-3"/></svg>`,
+ copy:`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>`,
+ x:`<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>`,
+ xs:`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>`,
+ info:`<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#002FA7" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex:none;margin-top:2px"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16.5v.5"/></svg>`,
+ bulb:`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#002FA7" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.8.8 1 1.5 1 2.5h6c0-1 .2-1.7 1-2.5A6 6 0 0 0 12 3z"/></svg>`,
+ warn:`<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex:none;margin-top:2px"><path d="M12 3l9.5 17h-19z"/><path d="M12 10v4M12 17v.5"/></svg>`,
+ lay:{tb:`<svg width="44" height="44" viewBox="0 0 44 44" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="8" y="4" width="28" height="36" rx="4"/><path d="M8 22h28"/></svg>`,
+      lr:`<svg width="44" height="44" viewBox="0 0 44 44" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="4" y="8" width="36" height="28" rx="4"/><path d="M22 8v28"/></svg>`}};
+const cam=(x,y,rot)=>`<g transform="translate(${x} ${y}) rotate(${rot})"><path d="M-6 -5h8l4 -3v16l-4 -3h-8z" fill="currentColor"/></g>`;
+const body=`<rect x="17" y="16" width="16" height="22" rx="7" fill="none" stroke="currentColor" stroke-width="2.4" opacity=".55"/>`;
+const topCam=`<circle cx="25" cy="27" r="16" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="3 4"/><circle cx="25" cy="27" r="3.5" fill="currentColor"/>`;
+const VIEWICON={fs:`<svg width="52" height="52" viewBox="0 0 50 52">${body}${cam(25,48,-90)}${cam(46,27,180)}</svg>`,
+                ft:`<svg width="52" height="52" viewBox="0 0 50 52">${body}${topCam}${cam(25,49,-90)}</svg>`,
+                st:`<svg width="52" height="52" viewBox="0 0 50 52">${body}${topCam}${cam(47,27,180)}</svg>`};
+const RATIOBOX={"3:4":[24,32],"4:3":[32,24],"16:9":[36,20],"9:16":[20,36]};
 
+/* ================= api ================= */
 async function api(path,opt={}){
-  const r=await fetch(path,opt);let j=null;try{j=await r.json()}catch(e){}
-  if(!r.ok)throw new Error((j&&j.detail)||r.statusText);return j;
+  const r=await fetch(path,opt);
+  if(!r.ok){let m=r.statusText;try{m=(await r.json()).detail||m}catch(e){}throw new Error(m)}
+  return r.json();
 }
-const post=(p,b)=>api(p,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b||{})});
-const f=rel=>`/files/${cur}/${rel}?v=${Date.now()}`;
+const send=(p,b,method="POST")=>api(p,{method,headers:{"Content-Type":"application/json"},body:JSON.stringify(b||{})});
+function upload(path,file,extra={}){const fd=new FormData();fd.append("file",file);for(const k in extra)fd.append(k,extra[k]);return api(path,{method:"POST",body:fd})}
 
-function kind(title){
-  if(/^(import_rig|prep)$/.test(title))return{s:1,step:"prep"};
-  if(title==="start_frame")return{s:2,step:"start_frame"};
-  if(/^(build|render|train)$/.test(title))return{s:3,step:"build"};
-  const m=String(title).match(/^(detect_fit|preview|export)_(.+)$/);if(m)return{s:4,step:m[1],v:m[2]};
-  return{s:0,step:title};
+/* ================= state ================= */
+let projects=[],settings=null,presets=null,loaded=false,uploading=[],opts={},qsel={},adv={};
+let dismissed=new Set((()=>{try{return JSON.parse(localStorage.getItem("xs_dismissed")||"[]")}catch(e){return[]}})());
+const P=n=>projects.find(p=>p.name===n);
+const kind=title=>{const b=String(title||"").replace(/_.*$/,"");return{import:"import",prep:"import",start:"frame",build:"train",train:"train",render:"train",process:"video",detect:"video",preview:"video",export:"video"}[b]||b};
+const jobBase=title=>{const m=String(title).match(/^(import_rig|start_frame|detect_fit|process|preview|export|build|train|render|prep)/);return m?m[1]:title};
+const active=j=>j&&(j.status==="running"||j.status==="queued");
+const mins=s=>s==null?null:Math.max(1,Math.ceil(s/60));
+const pct=j=>Math.round((j?.progress||0)*100);
+const optText=o=>o?`${t("V")[o.views[0]]} + ${t("V")[o.views[1]]} · ${t("L")[o.layout]} · ${o.ratio}`:"";
+
+function phase(S){
+  const k=active(S.job)?kind(S.job.title):"";
+  if(k==="import")return"import";
+  if(!S.prepped)return S.last_job&&S.last_job.status==="error"?"importfail":"noimport";
+  if(S.config_error||!S.keypoints)return"config";
+  if(k==="train")return"training";
+  if(!S.start_frame||k==="frame")return"setup";
+  if(!S.model)return"train";
+  return"actions";
 }
-const titleOf=k=>k.v?`${k.step}_${k.v}`:k.step;
-const keyOf=k=>`${k.step}:${k.v||""}`;
-const label=k=>t("k_"+k.step)+(k.v?` · ${k.v}`:"");
-const runOf=p=>jobs.find(j=>j.project===p&&ACTIVE(j.status));
-const buildBody=S=>({samples:S.render_samples||1500,workers:3,steps:S.train_steps||6000});
-function nextStep(S){
-  if(!S.prepped)return S.source?{step:"prep"}:null;
-  if(!S.config||S.config_error||(S.config_warnings||[]).length)return{block:"cfg"};
-  if(!S.start_frame)return{step:"start_frame"};
-  if(!S.model)return{step:"build",body:buildBody(S)};
-  for(const v of S.videos||[]){
-    if(!v.fitted)return{step:"detect_fit",v:v.id,body:{mode:"ours"}};
-    if(!v.fbx||!v.blend)return{step:"export",v:v.id};
-    if(!v.compare)return{step:"preview",v:v.id};
+
+/* ================= routing ================= */
+function parseRoute(){
+  const h=decodeURIComponent(location.hash.replace(/^#\/?/,"")).split("/").filter(Boolean);
+  if(h[0]!=="p"||!h[1])return{v:"home"};
+  return{v:"char",p:h[1],sub:h[2]||"",vid:h[2]==="play"?h[3]:null};
+}
+const go=h=>{if(location.hash!==h)location.hash=h;else render()};
+
+/* ================= home ================= */
+function cardStatus(S){
+  const j=S.job;
+  if(active(j)){
+    const k=kind(j.title);
+    if(j.status==="queued"&&k!=="video")return["run",t("queued")];
+    if(k==="train")return["run",j.eta!=null?t("trainingLeft",mins(j.eta)):t("trainingQ")];
+    if(k==="import")return["run",t("importing")];
+    if(k==="frame")return["run",t("framing")];
+    if(k==="video")return["run",t("fitting",pct(j))];
   }
-  return null;
+  switch(phase(S)){
+    case"importfail":return["bad",t("importFail")];
+    case"noimport":return["todo",t("nextImport")];
+    case"config":return["bad",t("needCheck")];
+    case"setup":return["todo",t("nextFrame")];
+    case"train":return S.last_job&&S.last_job.status==="error"&&kind(S.last_job.title)==="train"?["bad",t("failed")]:["todo",t("nextTrain")];
+  }
+  const n=S.videos.filter(v=>v.fbx).length;
+  return["ready",n?t("ready",n):t("readyNone")];
 }
-function launch(p,k){return post(k.v?`/api/projects/${p}/videos/${k.v}/run/${k.step}`:`/api/projects/${p}/run/${k.step}`,k.body).then(r=>r.job)}
-function fail(p,k,error,id){ST.auto[p]=false;errs[p]={...kind(titleOf(k)),error,id};save()}
-function armAuto(p){ST.auto[p]=true;delete errs[p];delete doneKeys[p];save()}
-
-async function autopilot(){
-  if(piloting||!settings||!settings.blender)return;piloting=true;
-  try{for(const S of projects){const p=S.name;
-    if(!ST.auto[p]||S.busy||runOf(p)||ST.inflight[p])continue;
-    let k=(ST.tasks[p]||[])[0],isTask=!!k;
-    if(!k){k=nextStep(S);if(!k||k.block)continue;
-      if(doneKeys[p]&&doneKeys[p].has(keyOf(k))){fail(p,k,t("noOutput"));continue}}
-    try{const id=await launch(p,k);ST.inflight[p]={id,task:isTask,key:keyOf(k)};seen[id]="queued";S.busy=true;
-      jobs.unshift({id,project:p,title:titleOf(k),status:"queued",progress:0,stage:"",stage_index:0,stages:1,elapsed:0})}
-    catch(e){fail(p,k,e.message)}
-    save()}}finally{piloting=false}
+function coverHTML(S){
+  return S.start_frame?`<img src="/api/projects/${encodeURIComponent(S.name)}/cover.jpg?v=${S.start_mtime||0}" alt="" loading="lazy">`:`<span class="ph">${esc(S.name[0])}</span>`;
 }
-function handleEnd(j){
-  const p=j.project,inf=ST.inflight[p],k=kind(j.title);
-  if(inf&&inf.id===j.id){delete ST.inflight[p];
-    if(j.status==="done"){if(inf.task)(ST.tasks[p]||[]).shift();else(doneKeys[p]=doneKeys[p]||new Set()).add(inf.key)}
-    else if(j.status==="cancelled"&&inf.task)(ST.tasks[p]||[]).shift()}
-  if(j.status!=="done"){ST.auto[p]=false;errs[p]={...k,error:j.status==="cancelled"?t("cancelled"):j.error,id:j.id}}
-  else if(errs[p]&&errs[p].step===k.step)delete errs[p];
-  lastEnded=j.id;save();
-}
-let polling=false;
-async function pollJobs(init){
-  if(polling)return;polling=true;
-  try{let js;try{js=await api("/api/jobs")}catch(e){return}
-    jobs=js;let changed=false;
-    for(const j of js){const prev=seen[j.id];
-      if(prev===undefined){seen[j.id]=j.status;if(!init){changed=true;if(!ACTIVE(j.status))handleEnd(j)}}
-      else if(prev!==j.status){seen[j.id]=j.status;changed=true;if(ACTIVE(prev)&&!ACTIVE(j.status))handleEnd(j)}}
-    for(const p in ST.inflight)if(!js.find(j=>j.id===ST.inflight[p].id)){delete ST.inflight[p];save();changed=true}
-    if(changed&&!init)await refresh();else updatePanel();
-  }finally{polling=false}
-}
-async function refresh(){
-  try{projects=await api("/api/projects")}catch(e){return}
-  if(!projects.find(p=>p.name===cur))setCur(projects.length?projects[0].name:"");
-  await autopilot();render();updatePanel();
+function homeHTML(){
+  const nb=settings&&!settings.blender?`<div class="banner">${I.warn}<span>${t("noBlender")} · ${t("noBlenderSub")}</span><span class="sp"></span><button class="btn line sm" data-act="settings">${t("openSet")}</button></div>`:"";
+  return `<section class="screen" data-key="__home"><h1 class="h1">${t("chars")}</h1><p class="lead">${t("lead")}</p>${nb}
+  <div class="grid">
+    <button class="card newcard" data-act="pickModel"><span class="plus">${I.plus}</span><div><div class="t">${t("newChar")}</div><div class="s">${t("newCharS")}</div></div></button>
+    ${projects.map(S=>{const[c,txt]=cardStatus(S);const j=S.job;
+      return `<a class="card" href="#/p/${encodeURIComponent(S.name)}"><div class="shot">${coverHTML(S)}</div>
+        <div class="info"><div class="name">${esc(S.name)}</div><div class="status ${c}"><span class="d"></span>${esc(txt)}</div></div>
+        ${active(j)?`<div class="bar"><i style="width:${pct(j)}%"></i></div>`:""}</a>`}).join("")}
+  </div></section>`;
 }
 
-/* ---------- uploads & drops ---------- */
-function toast(msg,bar,cls){const d=document.createElement("div");d.className="toast "+(cls||"");
-  d.innerHTML=`<div>${esc(msg)}</div>${bar?'<div class="tbar"><i></i></div>':""}`;$("#toasts").append(d);
-  const o={set:x=>{const i=d.querySelector("i");if(i)i.style.width=(x*100)+"%"},close:()=>d.remove()};
-  if(!bar)setTimeout(o.close,cls==="err"?7000:3500);return o}
-function upload(url,file,extra={}){return new Promise((res,rej)=>{
-  const fd=new FormData();fd.append("file",file);for(const k in extra)fd.append(k,extra[k]);
-  const x=new XMLHttpRequest(),tt=toast(t("uploading")+file.name,true);
-  x.upload.onprogress=e=>{if(e.lengthComputable)tt.set(e.loaded/e.total)};
-  x.onload=()=>{tt.close();let j=null;try{j=JSON.parse(x.responseText)}catch(e){}
-    x.status>=200&&x.status<300?res(j):rej(new Error((j&&j.detail)||x.statusText))};
-  x.onerror=()=>{tt.close();rej(new Error("network error"))};x.open("POST",url);x.send(fd)})}
-function uniqueName(stem){
-  let s=stem.replace(/[^A-Za-z0-9_\-]+/g,"_").replace(/^[^A-Za-z0-9]+/,"").replace(/_+$/,"").slice(0,40)||"rig";
-  const names=new Set(projects.map(p=>p.name));let n=s,k=2;while(names.has(n))n=`${s}_${k++}`;return n}
-async function importRig(file,into,regen){
-  let p=into;
-  if(!p){const S=projects.find(x=>x.name===cur);
-    if(S&&!S.source&&!S.prepped&&!runOf(S.name))p=S.name;
-    else{p=uniqueName(file.name.replace(/\.[^.]+$/,""));await post("/api/projects",{name:p});projects.push({name:p,videos:[]})}}
-  setCur(p);
-  const r=await upload(`/api/projects/${p}/rig`,file,{reset_config:regen?"1":"0"});
-  armAuto(p);if(r&&r.job)seen[r.job]="queued";
+/* ================= character page ================= */
+function headHTML(S){
+  return `<a class="back" href="#/">${I.back}${t("chars")}</a>
+  <div class="charhead"><h1 class="h1">${esc(S.name)}</h1>
+    <div class="facts">${S.actions?`<span class="fact">${t("builtin",S.actions)}</span>`:""}<button class="fact link" data-act="info">${t("info")}</button></div></div>`;
 }
-async function handleFiles(list){
-  const fs=[...list],isRig=x=>RIG_EXT.includes(ext(x.name));
-  const rigs=fs.filter(isRig),vids=fs.filter(x=>!isRig(x)&&(VID_EXT.includes(ext(x.name))||(x.type||"").startsWith("video/")));
-  fs.filter(x=>!rigs.includes(x)&&!vids.includes(x)).forEach(x=>toast(t("badFile")+x.name,false,"err"));
-  try{for(const x of rigs)await importRig(x);
-    if(vids.length){
-      if(!projects.find(p=>p.name===cur))toast(t("needProj"),false,"err");
-      else{for(const x of vids)await upload(`/api/projects/${cur}/videos`,x);armAuto(cur);toast(`${t("uploaded")} · ${vids.length}`,false,"ok")}}
-  }catch(e){toast(e.message,false,"err")}
-  await refresh();
+function stepsHTML(S,view){
+  const q=S.quality||"std",m=presets?.[q]?.minutes||40,o=S.start_options;
+  const s1=view==="setup"?"on":S.start_frame?"done":"wait";
+  const s2=(view==="train"||view==="training")?"on":S.model?"done":"wait";
+  const sub2=view==="training"?`${t("qname")[q]}`:view==="train"?t("s2pick"):S.model?`${t("trainDone")} · ${t("qname")[q]}`:t("s2sub",m);
+  const st=(cls,n,title,sub,href)=>`<${href?`a href="${href}"`:"div"} class="step ${cls}"><span class="n">${cls==="done"?"✓":n}</span><div>${title}<small>${esc(sub)}</small></div></${href?"a":"div"}>`;
+  const base=`#/p/${encodeURIComponent(S.name)}`;
+  return `<div class="steps">${st(s1,1,t("s1"),s1==="done"?optText(o):t("s1sub"),s1==="done"&&view!=="training"?base+"/setup":"")}
+    ${st(s2,2,t("s2"),sub2,"")}${st(S.model&&view==="actions"?"on":"wait",3,t("s3"),S.videos.length?t("s3n",S.videos.length):t("s3sub"),S.model&&view!=="training"?base:"")}</div>`;
 }
-function pick(accept,cb){const el=$("#picker");el.accept=accept;
-  el.onchange=()=>{const fs=[...el.files];el.value="";if(fs.length)(cb||handleFiles)(fs)};el.click()}
-let dragDepth=0;const hasFiles=e=>[...((e.dataTransfer&&e.dataTransfer.types)||[])].includes("Files");
-addEventListener("dragenter",e=>{if(!hasFiles(e))return;e.preventDefault();dragDepth++;
-  $("#dragSub").innerHTML=esc(t("dropRig"))+(cur?"<br>"+esc(t("dropVid",cur)):"");$("#dragOv").classList.add("on")});
-addEventListener("dragover",e=>{if(!hasFiles(e))return;e.preventDefault();e.dataTransfer.dropEffect="copy"});
-addEventListener("dragleave",e=>{if(!hasFiles(e))return;if(--dragDepth<=0){dragDepth=0;$("#dragOv").classList.remove("on")}});
-addEventListener("drop",e=>{if(!hasFiles(e))return;e.preventDefault();dragDepth=0;$("#dragOv").classList.remove("on");handleFiles(e.dataTransfer.files)});
+function frameImg(S){return `/files/${encodeURIComponent(S.name)}/start_frame/start_frame.png?v=${S.start_mtime||0}`}
+function promptHTML(S){
+  const lay=S.start_options?.layout||"tb";
+  return `<div class="prompt"><div class="lab">${t("promptLab")}<button class="btn soft sm" data-act="copy">${I.copy}<span>${t("copy")}</span></button></div>
+    <p id="promptText">${esc(t("prompt",t("LP")[lay]))}</p></div>
+    <div class="row" style="margin-top:18px"><a class="btn k" href="${frameImg(S)}" download="${esc(S.name)}_start_frame.png">${I.dl(18)}${t("dlFrame")}</a></div>`;
+}
 
-/* ---------- render ---------- */
-function applyLang(){document.querySelectorAll("[data-t]").forEach(e=>e.textContent=t(e.dataset.t));$("#langBtn").textContent=t("lang");document.documentElement.lang=L}
-function renderSide(){
-  $("#plist").innerHTML=projects.map(p=>{const dot=runOf(p.name)?'<i class="dot run"></i>':errs[p.name]?'<i class="dot err"></i>':"";
-    return `<a href="#" data-act="proj" data-p="${esc(p.name)}" class="${p.name===cur?"sel":""}"><span>${esc(p.name)}</span>${dot}</a>`}).join("")||`<span class="mut">—</span>`;
-  $("#exList").innerHTML=((settings&&settings.examples)||[]).map(x=>`<a href="#" data-act="example" data-x="${esc(x)}">${esc(x)}</a>`).join("")||`<span class="mut">—</span>`;
+function setupHTML(S){
+  const o=opts[S.name]||(opts[S.name]={...(S.start_options||{views:"fs",layout:"tb",ratio:"3:4"})});
+  const j=S.job,run=active(j)&&kind(j.title)==="frame";
+  const tile=(g,v,inner,sel)=>`<button class="tile${sel?" sel":""}" data-g="${g}" data-v="${v}">${inner}</button>`;
+  const fail=!run&&S.last_job&&S.last_job.status==="error"&&kind(S.last_job.title)==="frame";
+  return `<div class="two"><div><div class="pvwrap" id="pvwrap"><div class="pv" id="pv"></div><div class="pvcap" id="pvcap"></div></div></div>
+    <div class="panel">
+      <div class="og"><h3>${t("views")}</h3><div class="tiles c3">
+        ${tile("views","fs",`${VIEWICON.fs}${t("V").f} + ${t("V").s}<small>${t("common")}</small>`,o.views==="fs")}
+        ${tile("views","ft",`${VIEWICON.ft}${t("V").f} + ${t("V").t}`,o.views==="ft")}
+        ${tile("views","st",`${VIEWICON.st}${t("V").s} + ${t("V").t}`,o.views==="st")}</div></div>
+      <div class="og"><h3>${t("layout")}</h3><div class="tiles c2">
+        ${["tb","lr"].map(v=>tile("layout",v,`${I.lay[v]}${t("L")[v]}`,o.layout===v)).join("")}</div></div>
+      <div class="og"><h3>${t("ratio")}</h3><div class="tiles c4">
+        ${Object.keys(RATIOBOX).map(r=>tile("ratio",r,`<span class="ratio" style="width:${RATIOBOX[r][0]}px;height:${RATIOBOX[r][1]}px"></span>${r}`,o.ratio===r)).join("")}</div></div>
+      ${S.model?`<div class="tip" style="margin:0 0 22px">${I.info}<span>${t("retrainNote")}</span></div>`:""}
+      ${fail?`<div class="tip err" style="margin:0 0 22px">${I.warn}<span>${esc(S.last_job.error)}</span></div>`:""}
+      <button class="btn k big wide" data-act="genFrame" ${run?"disabled":""}>${run?t("genning",pct(j)):t("genFrame")}</button>
+    </div></div>`;
 }
-const card=(cls,title,sub,acts)=>`<div class="card hero ${cls}"><div class="ht"><h3>${title}</h3>${sub?`<div class="hs">${sub}</div>`:""}</div>${acts?`<div class="ha">${acts}</div>`:""}</div>`;
-const dlStart=()=>`<a class="btn pri" href="${f("start_frame/start_frame.png")}" download="start_frame.png">${ICON_UP.replace('d="M12 15V4M7 9l5-5 5 5','d="M12 4v11M7 10l5 5 5-5')}${t("dlStart")}</a>`;
-function hero(S,run,n){
-  if(settings&&!settings.blender)return card("err",t("noBlender"),t("noBlenderSub"),`<button class="pri" data-act="setBlender">${t("setBlender")}</button>`);
-  const e=errs[S.name];
-  if(e&&!run)return card("err",t("h_err",label(e)),`<div class="emsg">${esc(e.error||"")}</div>`,
-    `<button class="pri" data-act="continue">${t("retry")}</button>${e.id?`<button data-act="log" data-id="${e.id}">${t("log")}</button>`:""}`);
-  if(n&&n.block&&!run){const w=[S.config_error,...(S.config_warnings||[])].filter(Boolean);
-    return card("warn",t("h_cfg"),`${t("h_cfgSub")}${w.length?`<ul>${w.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>`:""}`,`<button class="pri" data-act="openCfg">${t("openCfg")}</button>`)}
-  if(run){const k=kind(run.title);
-    if(k.step==="build"&&S.start_frame)return card("",t("h_train"),t("h_trainSub"),dlStart());
-    return card("",t("h_run",label(k)),t("h_runSub"))}
-  if(n){if(ST.auto[S.name])return card("",t("h_queue",label(n)),"");
-    return card("",t("h_paused",label(n)),"",`<button class="pri" data-act="continue">${t("continue")}</button>`)}
-  if(!S.prepped)return"";
-  if(!(S.videos||[]).length)return card("",t("h_needVid"),t("h_needVidSub"),S.start_frame?dlStart():"");
-  return card("ok",t("h_done"),t("h_doneSub"));
+function pv(S){
+  const box=$("#pv"),wrap=$("#pvwrap");if(!box||!wrap)return;
+  const o=opts[S.name],[rw,rh]=o.ratio.split(":").map(Number);
+  const pad=innerWidth<=720?40:72,maxW=Math.min(520,wrap.clientWidth-pad),maxH=460,s=Math.min(maxW/rw,maxH/rh);
+  box.style.width=rw*s+"px";box.style.height=rh*s+"px";
+  box.style.gridTemplateColumns=o.layout==="lr"?"1fr 1fr":"1fr";box.style.gridTemplateRows=o.layout==="lr"?"1fr":"1fr 1fr";
+  // real panels from the last start frame: map each view letter to its rendered panel, if any
+  const cur=S.start_frame&&S.start_options?S.start_options.views:"",src={};
+  if(cur){const b=`/files/${encodeURIComponent(S.name)}/start_frame/`,q=`?v=${S.start_mtime||0}`;src[cur[0]]=b+"panel_front.png"+q;src[cur[1]]=b+"panel_side.png"+q}
+  const v=o.views.split("");
+  box.innerHTML=v.map(k=>`<div>${src[k]?`<div class="img" style="background-image:url('${src[k]}')"></div>`:`<div class="ico">${k==="t"?`<svg width="56" height="56" viewBox="0 0 50 52">${body}${topCam}</svg>`:`<svg width="56" height="56" viewBox="0 0 50 52">${body}${k==="f"?cam(25,48,-90):cam(46,27,180)}</svg>`}</div>`}<span>${t("V")[k]}</span></div>`).join("");
+  $("#pvcap").textContent=optText(o);
 }
-const pill=s=>`<span class="pill ${s.k}">${s.k==="run"?`<i></i>${t("p_run")} <b data-pct="${s.id}">${s.q?t("queued"):Math.round(s.pct*100)+"%"}</b>`:t("p_"+s.k)}</span>`;
-function stage(no,title,s,body,adv){
-  return `<section class="card stage ${s.k==="done"?"done":""} ${s.k==="run"||s.k==="queue"||s.k==="block"?"active":""}">
-    <div class="sh"><span class="num">${s.k==="done"?"✓":no}</span><h2>${title}</h2>${pill(s)}</div>
-    ${body?`<div class="body">${body}</div>`:""}
-    ${adv?`<details class="adv" id="adv${no}"><summary>${t("adv")}</summary><div class="advb">${adv}</div></details>`:""}</section>`;
+
+function trainHTML(S){
+  const q=qsel[S.name]||S.quality||"std",j=S.last_job;
+  const fail=j&&j.status==="error"&&kind(j.title)==="train";
+  const a=adv[S.name]||{};
+  return `<div class="two"><div><div class="sf"><img src="${frameImg(S)}" alt=""></div>
+      <div class="row" style="margin-top:18px;justify-content:center"><a class="btn line sm" href="#/p/${encodeURIComponent(S.name)}/setup">${t("reframe")}</a></div></div>
+    <div class="panel">
+      <div class="og"><h3>${t("quality")}</h3><div class="tiles c3">
+        ${["fast","std","fine"].map(k=>`<button class="tile q${q===k?" sel":""}" data-g="q" data-v="${k}">${k==="std"?`<span class="tag">${t("rec")}</span>`:""}<span class="min">${presets?.[k]?.minutes??"–"}<em>${t("min")}</em></span><span class="nm">${t("qname")[k]}</span><small>${t("qsub")[k]}</small></button>`).join("")}
+      </div></div>
+      <details class="adv"${a.open?" open":""}><summary>${t("adv")} ›</summary><div class="f">
+        <label>${t("samples")}<input class="field" id="advN" type="number" min="50" step="50" value="${esc(a.samples??presets?.[q]?.samples??"")}"></label>
+        <label>${t("steps")}<input class="field" id="advS" type="number" min="100" step="500" value="${esc(a.steps??presets?.[q]?.steps??"")}"></label></div></details>
+      ${fail?`<div class="tip err" style="margin:0 0 22px">${I.warn}<span>${esc(j.error)}</span></div>`:""}
+      <button class="btn k big wide" data-act="train">${S.model?t("retrain"):t("startTrain")}</button>
+      <div class="tip" style="margin-top:22px">${I.info}<span>${t("frameReady")}</span></div>
+    </div></div>`;
 }
-const chip=(lab,s)=>`<span class="chip ${s}">${s==="done"?"✓ ":""}${lab}</span>`;
+function trainingHTML(S){
+  const j=S.job,q=j.status==="queued",m=mins(j.eta);
+  return `<div class="two"><div class="panel train">
+      <div class="eyebrow"><span class="d"></span>${q?t("queuedNow"):t("trainingNow")}</div>
+      <div class="bignum">${m==null?"…":m}<em>${t("min")}</em></div>
+      <div style="font:600 18px/1.4 var(--disp);color:var(--ink2)">${t("etaCap")}</div>
+      <div class="track"><i style="width:${Math.max(1,pct(j))}%"></i></div>
+      <div class="tmeta"><span>${t("doneP",pct(j))}</span><span>${t("used",Math.floor((j.elapsed||0)/60))}</span></div>
+      <div class="tip">${I.bulb}<span>${t("meanwhile")}</span></div>
+      <div class="row" style="margin-top:22px"><button class="btn line sm" data-act="log" data-job="${j.id}">${t("details")}</button><button class="btn line sm danger" data-act="cancelJob" data-job="${j.id}">${t("cancelTrain")}</button></div>
+    </div>
+    <div><div class="sf"><img src="${frameImg(S)}" alt=""></div>${promptHTML(S)}</div></div>`;
+}
+function frameHTML(S){
+  return `<div class="two"><div><div class="sf"><img src="${frameImg(S)}" alt=""></div></div>
+    <div>${promptHTML(S)}<div class="tip">${I.info}<span>${esc(optText(S.start_options))}</span></div>
+      <div class="row" style="margin-top:18px"><a class="btn line sm" href="#/p/${encodeURIComponent(S.name)}/setup">${t("reframe")}</a></div></div></div>`;
+}
+function vcardHTML(S,v){
+  const j=v.job,run=active(j),fail=!run&&j&&j.status==="error",base=`#/p/${encodeURIComponent(S.name)}`;
+  const thumb=`<img src="/api/projects/${encodeURIComponent(S.name)}/videos/${encodeURIComponent(v.id)}/thumb.jpg" alt="" loading="lazy">`;
+  const stg=j?(t("stg")[j.stage_index]||t("stg")[1]):"";
+  let shot,btn;
+  if(run){
+    shot=`<div class="vshot">${thumb}<div class="prog">${j.status==="queued"?t("queued"):`${stg} · ${pct(j)}%`}<div class="t"><i style="width:${Math.max(2,pct(j))}%"></i></div></div></div>`;
+    btn=`<button class="btn line sm" disabled>${t("busy")}</button>`;
+  }else if(v.fbx&&v.compare){
+    shot=`<a class="vshot" href="${base}/play/${encodeURIComponent(v.id)}">${thumb}<span class="badge ok">${I.check}${t("done")}</span><span class="play"><i>${I.play}</i></span></a>`;
+    btn=`<a class="btn k sm" href="/files/${encodeURIComponent(S.name)}/videos/${encodeURIComponent(v.id)}/fit/mocap.fbx" download="${esc(S.name)}_${esc(v.id)}.fbx">${I.dl(16)}${t("dlFbx")}</a>`;
+  }else{
+    shot=`<div class="vshot">${thumb}<span class="badge${fail?" bad":""}">${fail?t("fitFail"):t("notFit")}</span></div>`;
+    btn=`<button class="btn k sm" data-act="process" data-v="${esc(v.id)}">${fail?t("retry"):t("startFit")}</button>`;
+  }
+  return `<div class="vcard">${shot}${run?"":`<button class="del" data-act="delVid" data-v="${esc(v.id)}" aria-label="delete">${I.xs}</button>`}
+    <div class="info"><div><div class="name">${esc(v.id)}</div><div class="meta">${t("sec",Math.round(v.duration||0))}</div></div><span class="sp"></span>${btn}</div></div>`;
+}
+function actionsHTML(S){
+  const base=`#/p/${encodeURIComponent(S.name)}`;
+  return `<div class="prep"><span class="ck"><i>${I.check}</i>${t("s1")}</span><span class="ck"><i>${I.check}</i>${t("trainDone")} · ${t("qname")[S.quality||"std"]}</span>
+    <span class="sp"></span><a class="btn line sm" href="${base}/frame">${t("framePrompt")}</a><a class="btn line sm" href="${base}/train">${t("retrain")}</a></div>
+    <h2 class="h2">${t("actions")} <small>${t("s3n",S.videos.length)}</small></h2>
+    <div class="vgrid"><button class="dropv" data-act="pickVideo"><span class="ic">${I.video}</span><div class="t">${t("dropVid")}</div><div class="s">${t("dropVidS")}</div></button>
+    ${S.videos.slice().reverse().map(v=>vcardHTML(S,v)).join("")}</div>`;
+}
+function stateHTML(S,ph){
+  const j=S.job;
+  if(ph==="import")return `<div class="panel center"><div class="eyebrow"><span class="d"></span>${t("importTitle")}</div><p class="lead" style="margin:0">${t("importSub")}</p>
+    <div class="track" style="width:min(420px,80%);margin:8px 0"><i style="width:${Math.max(3,pct(j))}%"></i></div></div>`;
+  if(ph==="importfail"||ph==="noimport")return `<div class="panel center"><h2 class="h2" style="margin:0">${ph==="importfail"?t("importFail"):t("nextImport")}</h2>
+    <p class="lead" style="margin:0">${t("importFailSub")}</p>${S.last_job?.error?`<div class="warn err">${esc(S.last_job.error)}</div>`:""}
+    <div class="row" style="justify-content:center"><button class="btn k" data-act="reimport">${t("reimport")}</button>${S.last_job?`<button class="btn line" data-act="log" data-job="${S.last_job.id}">${t("details")}</button>`:""}</div></div>`;
+  return `<div class="panel center"><h2 class="h2" style="margin:0">${t("cfgTitle")}</h2><p class="lead" style="margin:0">${t("cfgSub")}</p>
+    ${S.config_error?`<div class="warn err">${esc(S.config_error)}</div>`:""}<button class="btn k" data-act="info">${t("openInfo")}</button></div>`;
+}
+function charHTML(S,r){
+  const ph=phase(S);let view=ph;
+  if(["setup","train","actions"].includes(ph)||ph==="training"){
+    if(r.sub==="setup"&&ph!=="training")view="setup";
+    else if(r.sub==="train"&&ph==="actions")view="train";
+    else if(r.sub==="frame"&&ph==="actions")view="frame";
+  }
+  let inner;
+  switch(view){
+    case"setup":inner=stepsHTML(S,"setup")+setupHTML(S);break;
+    case"train":inner=stepsHTML(S,"train")+trainHTML(S);break;
+    case"training":inner=stepsHTML(S,"training")+trainingHTML(S);break;
+    case"frame":inner=frameHTML(S);break;
+    case"actions":inner=actionsHTML(S);break;
+    default:inner=stateHTML(S,ph);
+  }
+  return {html:`<section class="screen" data-key="${esc(S.name)}">${headHTML(S)}${inner}</section>`,view};
+}
+
+/* ================= lightbox ================= */
+function renderLB(r){
+  const host=$("#lbHost"),S=r.v==="char"&&P(r.p),v=S&&r.vid&&S.videos.find(x=>x.id===r.vid);
+  if(!v||!v.compare){if(host.innerHTML){host.innerHTML="";host.dataset.key="";document.body.style.overflow=""}return}
+  const key=`${S.name}/${v.id}/${v.compare_mtime}/${lang}`;if(host.dataset.key===key)return;host.dataset.key=key;
+  const f=`/files/${encodeURIComponent(S.name)}/videos/${encodeURIComponent(v.id)}/fit/`;
+  host.innerHTML=`<div class="lb" data-act="lbBack"><button class="x" data-act="lbClose" aria-label="${t("close")}">${I.x}</button>
+    <div class="vbox"><video muted loop autoplay playsinline preload="auto" src="${f}compare.mp4?v=${v.compare_mtime||0}"></video>
+      <span class="lab" style="left:14px">${t("src")}</span><span class="lab" style="left:calc(50% + 14px)">${t("res")}</span></div>
+    <div class="bot"><div><div class="name">${esc(v.id)}</div><div class="meta">${esc(S.name)} · ${t("sec",Math.round(v.duration||0))} · ${t("frames",v.frames||0)}</div></div><span class="sp"></span>
+      ${v.blend?`<a class="btn onDark" href="${f}mocap.blend" download="${esc(S.name)}_${esc(v.id)}.blend">${t("dlBlend")}</a>`:""}
+      ${v.fbx?`<a class="btn k" href="${f}mocap.fbx" download="${esc(S.name)}_${esc(v.id)}.fbx">${I.dl(18)}${t("dlFbx")}</a>`:""}</div></div>`;
+  document.body.style.overflow="hidden";
+  host.querySelector("video").play().catch(()=>{});
+}
+
+/* ================= dock ================= */
+function renderDock(r,view){
+  const host=$("#dockHost");let h="";
+  const run=projects.flatMap(S=>active(S.job)?[S]:[]);
+  if(uploading.length){h=`<div class="dock"><span class="ring"></span><span>${esc(t("uploading",uploading[0]))}</span></div>`}
+  else if(run.length){
+    const S=run.find(S=>S.job.status==="running")||run[0],j=S.job,k=jobBase(j.title);
+    const hideHere=r.v==="char"&&r.p===S.name&&(view==="training"||kind(j.title)==="video"||kind(j.title)==="import"||kind(j.title)==="frame");
+    if(!hideHere){const left=j.eta!=null&&kind(j.title)==="train"?`<span class="m">${t("left",mins(j.eta))}</span>`:"";
+      h=`<div class="dock"><span class="ring"></span><span>${esc(S.name)} · ${t("jobT")[k]||k} · ${pct(j)}%</span>${left}${run.length>1?`<span class="m">+${run.length-1}</span>`:""}<button data-act="log" data-job="${j.id}">${t("details")}</button></div>`}
+  }else{
+    const bad=projects.map(S=>S.last_job).find(j=>j&&j.status==="error"&&!dismissed.has(j.id));
+    if(bad){const k=jobBase(bad.title);
+      h=`<div class="dock"><span class="bang">!</span><span>${esc(bad.project)} · ${t("failedT",t("jobT")[k]||k)}</span><button data-act="log" data-job="${bad.id}">${t("details")}</button><button data-act="dismiss" data-job="${bad.id}">${t("dismiss")}</button></div>`}
+  }
+  if(host.innerHTML!==h)host.innerHTML=h;
+}
+
+/* ================= render ================= */
+let lastHTML="",lastView="";
 function render(){
-  renderSide();
-  const m=$("#main"),open=[...m.querySelectorAll("details[open][id]")].map(d=>d.id);
-  const S=projects.find(p=>p.name===cur);
-  if(!S){m.innerHTML=`<div class="drop big" data-act="pickRig" tabindex="0"><span class="ic">${ICON_UP}</span><b>${t("emptyTitle")}</b><span>${t("emptySub")}</span><small>${t("pick")}</small></div>`;return}
-  const run=runOf(S.name),rk=run?kind(run.title):null,n=nextStep(S),auto=!!ST.auto[S.name],e=errs[S.name],vids=S.videos||[];
-  const busy=!!(run||S.busy);
-  const st=(no,done,ready)=>rk&&rk.s===no?{k:"run",pct:run.progress,id:run.id,q:run.status==="queued"}:done?{k:"done"}:e&&e.s===no?{k:"err"}:auto&&ready?{k:"queue"}:{k:"wait"};
-  let h=hero(S,run,n);
-  const projAdv=`<details class="adv" id="advP" style="margin:4px 0 0"><summary>${t("project")}: ${esc(S.name)}</summary><div class="advb"><button class="danger" data-act="delProj" ${busy?"disabled":""}>${t("delProj")}</button></div></details>`;
-  if(!S.source&&!S.prepped&&!run){
-    m.innerHTML=h+`<div class="drop big" data-act="pickRig" tabindex="0"><span class="ic">${ICON_UP}</span><b>${t("emptyTitle")}</b><span>${t("emptySub")}</span><small>${t("pick")}</small></div>`+projAdv;return}
-  // 1 character
-  let s1=st(1,S.prepped&&!(n&&n.block));if(n&&n.block&&s1.k!=="run")s1={k:"block"};
-  const r=S.rig;
-  const b1=(r?`<div class="sum"><b>${esc(r.armature)}</b> · ${esc(r.mesh)} · ${r.bones} ${t("bones")} · ${S.keypoints??"-"} ${t("kps")} · ${r.verts} ${t("verts")}</div>`:"")+
-    (S.config_error?`<div class="wlist err">${esc(S.config_error)}</div>`:"")+((S.config_warnings||[]).length?`<div class="wlist">${S.config_warnings.map(esc).join("<br>")}</div>`:"");
-  const a1=`<div class="row"><button data-act="reimport">${t("reimport")}</button><label><input type="checkbox" id="regen"> ${t("regen")}</label></div>
-    ${S.source?`<div class="row"><button data-act="reprep">${t("reprep")}</button></div>`:""}
-    ${S.config?`<hr><details id="cfgDet"><summary>${t("cfg")}</summary><div class="sub">${t("cfgd")}</div><textarea id="cfgText" spellcheck="false"></textarea>
-      <div class="row"><button class="pri" data-act="cfgSave">${t("save")}</button><span id="cfgMsg"></span></div></details>`:""}`;
-  h+=stage(1,t("st1"),s1,b1,a1);
-  // 2 start frame
-  const b2=S.start_frame?`<p class="hint">${t("sfHint")}</p><img class="thumb" src="${f("start_frame/start_frame.png")}" alt=""><div class="row" style="margin-top:12px">${dlStart()}</div>`
-    :`<p class="hint">${t("sfWait")}</p>`;
-  const a2=`<div class="row"><button data-act="redoSf" ${S.prepped?"":"disabled"}>${t("redoSf")}</button>
-    ${S.start_frame?`<a href="${f("start_frame/cameras.json")}" download>cameras.json</a>`:""}</div>`;
-  h+=stage(2,t("st2"),st(2,S.start_frame,S.prepped&&!(n&&n.block)),b2,a2);
-  // 3 training
-  const ev=S.eval?`<div class="sum">${t("evalTxt")}: <b>${S.eval.px_mean.toFixed(1)} / ${S.eval.px_median.toFixed(1)}</b> · PCK@10px <b>${(S.eval.pck_10px*100).toFixed(0)}%</b></div>`:"";
-  const b3=S.model?ev:`<p class="hint">${t("trainHint")}${S.start_frame?"":" "+t("trainWait")}</p>`;
-  const a3=`<div class="row"><label>${t("samples")} <input type="number" id="nSamp" value="${S.render_samples||1500}" min="1"></label>
-    <label>${t("workers")} <input type="number" id="nWork" value="3" min="1" max="8"></label>
-    <label>${t("steps")} <input type="number" id="nSteps" value="${S.train_steps||6000}" min="10"></label></div>
-    <div class="sub">${t("rec")}: 1500 / 3 / 6000 · ${t("haveData")}: ${S.samples}</div>
-    <div class="row">${S.samples>0?`<label><input type="checkbox" id="reuse"> ${t("reuse")}</label>`:""}</div>
-    <div class="row"><button data-act="retrain" ${S.start_frame?"":"disabled"}>${t("retrain")}</button>${S.model?`<a href="${f("model/head.pt")}" download>head.pt</a>`:""}</div>`;
-  h+=stage(3,t("st3"),st(3,S.model,S.start_frame),b3,a3);
-  // 4 videos
-  const vdone=v=>v.fitted&&v.fbx&&v.blend&&v.compare;
-  const vc=vids.map(v=>{
-    const vr=rk&&rk.s===4&&rk.v===v.id?rk.step:null,ve=e&&e.s===4&&e.v===v.id?e.step:null;
-    const cs=(step,done)=>vr===step?"run":ve===step?"err":done?"done":"";
-    const rep=v.report?`<div class="cap">${t("resid")}: ${t("front")} ${v.report.kp_px_median.front.toFixed(1)} · ${t("side")} ${v.report.kp_px_median.side.toFixed(1)} (${esc(v.report.mode)})</div>`:"";
-    const dl=(v.fbx||v.blend)?`<div class="row">${v.fbx?`<a class="btn pri" href="${f(`videos/${v.id}/fit/mocap.fbx`)}" download>mocap.fbx</a>`:""}${v.blend?`<a class="btn" href="${f(`videos/${v.id}/fit/mocap.blend`)}" download>mocap.blend</a>`:""}</div>`:"";
-    return `<div class="vid" data-v="${esc(v.id)}"><div class="vh"><b>${esc(v.id)}</b><span class="mut">${v.size?v.size.join("×"):""} · ${v.frames||"?"}f</span>
-      <span class="chips">${chip(t("c_fit"),cs("detect_fit",v.fitted))}${chip(t("c_export"),cs("export",v.fbx&&v.blend))}${chip(t("c_preview"),cs("preview",v.compare))}</span></div>
-      ${dl}
-      ${v.compare?`<div class="cap">${t("compare")}</div><video controls loop muted preload="metadata" src="${f(`videos/${v.id}/fit/compare.mp4`)}"></video>`
-        :`<video controls loop muted preload="metadata" src="${f(`videos/${v.id}/source.mp4`)}" style="max-height:360px"></video>`}
-      ${rep}
-      <details class="adv" id="advv_${esc(v.id)}"><summary>${t("adv")}</summary><div class="advb">
-        ${v.overlay?`<details id="ovl_${esc(v.id)}"><summary>${t("overlay")}</summary><video controls loop muted preload="metadata" src="${f(`videos/${v.id}/det/overlay.mp4`)}"></video></details><hr>`:""}
-        <div class="row"><label>${t("mode")} <select class="vmode"><option value="ours">${t("ours")}</option><option value="triangulate">${t("tri")}</option></select></label>
-        <button data-act="refit" data-v="${esc(v.id)}" ${S.model&&S.start_frame?"":"disabled"}>${t("refit")}</button>
-        <button class="danger" data-act="delVid" data-v="${esc(v.id)}" ${busy?"disabled":""}>${t("del")}</button></div></div></details></div>`}).join("");
-  const b4=`<div class="drop" data-act="pickVid" tabindex="0"><span class="ic">${ICON_VID}</span><b>${t("vidDrop")}</b><small>${t("vidDropSub")}</small></div>
-    ${vids.length&&!S.model?`<p class="hint" style="margin-top:10px">${t("vidWait")}</p>`:""}${vc}`;
-  h+=stage(4,t("st4"),st(4,vids.length&&vids.every(vdone),S.model&&vids.length),S.prepped?b4:"",null);
-  h+=projAdv;
-  m.innerHTML=h;
-  open.forEach(id=>{const d=document.getElementById(id);if(d)d.open=true});
-  const det=$("#cfgDet"),ta=$("#cfgText");
-  if(det){ta.oninput=()=>cfgDraft=ta.value;
-    det.ontoggle=async()=>{if(det.open&&!ta.value){ta.value=cfgDraft??(await api(`/api/projects/${cur}/config`)).text}}}
+  $("#langBtn").textContent=t("lang");$("#setBtn").setAttribute("aria-label",t("settings"));
+  document.documentElement.lang=lang==="zh"?"zh":"en";
+  const r=parseRoute(),main=$("#main");let html,view="home",S=null;
+  if(!loaded){html="";}
+  else if(r.v==="home")html=homeHTML();
+  else{S=P(r.p);if(!S){go("#/");return}const c=charHTML(S,r);html=c.html;view=c.view}
+  if(html!==lastHTML){
+    const same=main.firstElementChild&&main.firstElementChild.dataset.key===(S?S.name:"__home")&&view===lastView;
+    const typing=same&&main.contains(document.activeElement)&&document.activeElement.matches("input,textarea");
+    if(!typing){main.innerHTML=html;lastHTML=html}
+    if(same)main.firstElementChild&&main.firstElementChild.classList.remove("screen");   // no fade on data refresh
+    else scrollTo(0,0);
+  }
+  lastView=view;
+  if(view==="setup")pv(S);
+  renderLB(r);renderDock(r,view);
 }
 
-/* ---------- job strip ---------- */
-function panelJobPick(){
-  const by=id=>id&&!closed.has(id)&&jobs.find(j=>j.id===id);
-  return by(panelJob)||jobs.find(j=>ACTIVE(j.status)&&j.project===cur)||jobs.find(j=>ACTIVE(j.status))||by(lastEnded)||null;
+/* ================= data ================= */
+let timer=null;
+async function refresh(){
+  clearTimeout(timer);
+  try{projects=await api("/api/projects");loaded=true}catch(e){}
+  render();
+  const busy=uploading.length||projects.some(S=>active(S.job));
+  timer=setTimeout(refresh,busy?2000:8000);
 }
-async function updatePanel(){
-  const j=panelJobPick(),box=$("#job");
-  document.querySelectorAll("[data-pct]").forEach(el=>{const r=jobs.find(x=>x.id===el.dataset.pct);if(r)el.textContent=r.status==="queued"?t("queued"):Math.round(r.progress*100)+"%"});
-  if(!j){box.hidden=true;return}
-  box.hidden=false;
-  if(logFor!==j.id){logFor=j.id;logNext=0;$("#log").textContent=""}
-  const act=ACTIVE(j.status);box.classList.toggle("active",act);
-  $("#jobTitle").textContent=`${j.project} · ${label(kind(j.title))}`;
-  $("#jobStage").textContent=act?(j.stage?`${j.stage} (${j.stage_index+1}/${j.stages}) · ${fmt(j.elapsed)}`:""):(j.status==="done"?fmt(j.elapsed):(j.error||""));
-  $("#jobPct").innerHTML=j.status==="done"?`<span class="ok">${t("jobDone")}</span>`:act?(j.status==="queued"?t("queued"):`${(j.progress*100).toFixed(1)}%`):`<span class="err">${t("jobErr")}</span>`;
-  $("#jobBar").style.width=(j.status==="done"?100:j.progress*100)+"%";
-  $("#jobCancel").hidden=!act;$("#jobClose").hidden=act;
-  $("#log").hidden=!logOpen;$("#jobLog").textContent=logOpen?t("hideLog"):t("log");
-  if(logOpen){try{const d=await api(`/api/jobs/${j.id}?since=${logNext}`);if(logFor!==j.id)return;logNext=d.next;
-    if(d.lines.length){const lg=$("#log"),stick=lg.scrollTop+lg.clientHeight>=lg.scrollHeight-20;lg.textContent+=d.lines.join("\n")+"\n";
-      if(lg.textContent.length>200000)lg.textContent=lg.textContent.slice(-150000);if(stick)lg.scrollTop=lg.scrollHeight}}catch(e){}}
-}
-$("#jobLog").onclick=()=>{logOpen=!logOpen;updatePanel()};
-$("#jobCancel").onclick=()=>{const j=panelJobPick();if(j)post(`/api/jobs/${j.id}/cancel`).catch(e=>toast(e.message,false,"err"))};
-$("#jobClose").onclick=()=>{const j=panelJobPick();if(j)closed.add(j.id);if(panelJob===(j&&j.id))panelJob=null;logOpen=false;updatePanel()};
+function toast(msg,err){const h=$("#ovHost").querySelector(".toast");if(h)h.remove();
+  const d=document.createElement("div");d.className="toast"+(err?" err":"");d.textContent=msg;$("#ovHost").appendChild(d);setTimeout(()=>d.remove(),4200)}
+async function guard(fn){try{await fn()}catch(e){toast(e.message||String(e),true)}finally{refresh()}}
 
-/* ---------- actions ---------- */
-function pushTask(p,k){(ST.tasks[p]=ST.tasks[p]||[]).push(k);armAuto(p);save()}
-document.addEventListener("keydown",e=>{const d=e.target.closest&&e.target.closest(".drop");if(d&&(e.key==="Enter"||e.key===" ")){e.preventDefault();d.click()}});
+const isModel=f=>/\.(blend|fbx|glb|gltf)$/i.test(f.name),isVideo=f=>/\.(mp4|mov|webm|mkv)$/i.test(f.name)||/^video\//.test(f.type);
+async function importModels(files){
+  let last=null;
+  for(const f of files){uploading.push(f.name);render();
+    try{last=(await upload("/api/import",f)).name}catch(e){toast(e.message,true)}finally{uploading.shift()}}
+  if(last)go(`#/p/${encodeURIComponent(last)}`);refresh();
+}
+async function uploadVideos(p,files){
+  for(const f of files){uploading.push(f.name);render();
+    try{await upload(`/api/projects/${encodeURIComponent(p)}/videos`,f)}catch(e){toast(e.message,true)}finally{uploading.shift()}}
+  refresh();
+}
+function handleFiles(files){
+  files=[...files];const models=files.filter(isModel),vids=files.filter(isVideo),r=parseRoute();
+  if(models.length)importModels(models);
+  if(vids.length){const S=r.v==="char"&&P(r.p);
+    if(!S)toast(t("needChar"),true);else if(!S.model)toast(t("notReady"),true);else uploadVideos(S.name,vids)}
+}
+
+/* ================= sheets ================= */
+function closeSheet(){$("#sheetHost").innerHTML="";clearTimeout(logTimer)}
+function sheet(title,inner){
+  $("#sheetHost").innerHTML=`<div class="veil" data-act="veil"><div class="sheet" role="dialog" aria-label="${esc(title)}"><div class="hd"><h2>${esc(title)}</h2><button class="iconbtn" data-act="closeSheet" aria-label="${t("close")}">${I.x}</button></div>${inner}</div></div>`;
+}
+async function openInfo(){
+  const S=P(parseRoute().p);if(!S)return;
+  const kv=[];if(S.rig)kv.push([t("rig"),S.rig.armature],[t("mesh"),S.rig.mesh],[t("verts"),S.rig.verts],[t("bones"),S.rig.bones]);
+  if(S.keypoints)kv.push([t("kps"),S.keypoints]);
+  if(S.eval)kv.push([t("accuracy"),`${t("pxMed",S.eval.px_median.toFixed(1))} · PCK@10 ${(S.eval.pck_10px*100).toFixed(0)}%`]);
+  const w=[S.config_error,...(S.config_warnings||[])].filter(Boolean);
+  sheet(t("info").replace(" ›",""),`${kv.length?`<dl class="kv">${kv.map(([k,v])=>`<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join("")}</dl>`:""}
+    ${w.map(x=>`<div class="warn${x===S.config_error?" err":""}">${esc(x)}</div>`).join("")}
+    ${S.config?`<h3>${t("cfg")}</h3><div class="mut" style="font-size:13px;margin:-4px 0 10px">${t("cfgHint")}</div>
+    <textarea class="code" id="cfgText" spellcheck="false"></textarea><div class="row" style="margin-top:12px"><button class="btn k sm" data-act="saveCfg">${t("save")}</button><span id="cfgMsg" class="mut"></span></div>`:""}
+    <h3>&nbsp;</h3><div class="row"><button class="btn line sm" data-act="reimport">${t("reimport")}</button><button class="btn line sm danger" data-act="delChar">${t("delChar")}</button></div>`);
+  if(S.config){try{$("#cfgText").value=(await api(`/api/projects/${encodeURIComponent(S.name)}/config`)).text}catch(e){}}
+}
+function openSettings(){
+  sheet(t("settings"),`<label class="mut" style="font-weight:600;font-size:14px">${t("blenderPath")}<input class="field" id="blenderIn" value="${esc(settings?.blender||"")}" spellcheck="false"></label>
+    <div class="row" style="margin-top:12px"><button class="btn k sm" data-act="saveSet">${t("save")}</button><span id="setMsg" class="mut"></span></div>
+    ${(settings?.examples||[]).length?`<h3>${t("examples")}</h3><div class="ex">${settings.examples.map(x=>`<button class="btn line sm" data-act="example" data-x="${esc(x)}">${esc(x)}</button>`).join("")}</div>`:""}`);
+}
+let logTimer=null;
+async function openLog(id){
+  sheet(t("logTitle"),`<div id="logHd" class="mut" style="font-weight:600;margin-bottom:12px"></div><pre class="log" id="logPre"></pre><div class="row" style="margin-top:12px" id="logBtns"></div>`);
+  let since=0;const pre=$("#logPre");
+  const tick=async()=>{if(!$("#logPre"))return;
+    try{const j=await api(`/api/jobs/${id}?since=${since}`);since=j.next;
+      const stick=pre.scrollTop+pre.clientHeight>=pre.scrollHeight-20;
+      pre.textContent+=(j.lines||[]).join("\n")+((j.lines||[]).length?"\n":"");if(stick)pre.scrollTop=pre.scrollHeight;
+      $("#logHd").textContent=`${j.project} · ${j.title} · ${j.stage} · ${pct(j)}% · ${j.status}${j.error?" · "+j.error:""}`;
+      $("#logBtns").innerHTML=active(j)?`<button class="btn line sm danger" data-act="cancelJob" data-job="${j.id}">${t("cancel")}</button>`:"";
+      if(active(j))logTimer=setTimeout(tick,1500)}catch(e){pre.textContent=e.message}};
+  tick();
+}
+
+/* ================= events ================= */
 document.addEventListener("click",async e=>{
-  const a=e.target.closest("[data-act]");if(!a||a.disabled)return;
-  if(a.tagName==="A")e.preventDefault();
-  const act=a.dataset.act,p=cur,S=projects.find(x=>x.name===p);
-  try{switch(act){
-    case "lang":L=L==="zh"?"en":"zh";try{localStorage.setItem("qm_lang",L)}catch(_){}applyLang();render();updatePanel();break;
-    case "setBlender":{const v=prompt(t("blender"),(settings&&settings.blender)||"");if(v===null)return;settings=await post("/api/settings",{blender:v});await refresh();break}
-    case "proj":setCur(a.dataset.p);render();updatePanel();refresh();break;
-    case "example":{const name=uniqueName(a.dataset.x),r=await post("/api/projects",{name,example:a.dataset.x});setCur(name);armAuto(name);if(r.job)seen[r.job]="queued";await refresh();break}
-    case "pickRig":pick(RIG_EXT.join(","));break;
-    case "pickVid":pick("video/*,"+VID_EXT.join(","));break;
-    case "continue":armAuto(p);await refresh();break;
-    case "log":panelJob=a.dataset.id;closed.delete(panelJob);logOpen=true;updatePanel();break;
-    case "openCfg":{const ad=$("#adv1"),cd=$("#cfgDet");if(ad)ad.open=true;if(cd){cd.open=true;cd.scrollIntoView({behavior:"smooth",block:"start"})}break}
-    case "reimport":{const regen=!!($("#regen")&&$("#regen").checked);
-      pick(RIG_EXT.join(","),async fs=>{try{await importRig(fs[0],p,regen)}catch(err){toast(err.message,false,"err")}await refresh()});break}
-    case "reprep":pushTask(p,{step:"prep"});await refresh();break;
-    case "redoSf":pushTask(p,{step:"start_frame"});await refresh();break;
-    case "retrain":pushTask(p,{step:"build",body:{samples:+$("#nSamp").value,workers:+$("#nWork").value,steps:+$("#nSteps").value,reuse_data:!!($("#reuse")&&$("#reuse").checked)}});await refresh();break;
-    case "refit":{const v=a.dataset.v,mode=a.closest(".vid").querySelector(".vmode").value;
-      pushTask(p,{step:"detect_fit",v,body:{mode}});pushTask(p,{step:"export",v});pushTask(p,{step:"preview",v});await refresh();break}
-    case "delVid":{const v=a.dataset.v;if(!confirm(t("confirmDel")+" "+v))return;
-      await api(`/api/projects/${p}/videos/${v}`,{method:"DELETE"});ST.tasks[p]=(ST.tasks[p]||[]).filter(k=>k.v!==v);save();await refresh();break}
-    case "delProj":if(!confirm(t("confirmDel")+" "+p))return;
-      await api(`/api/projects/${p}`,{method:"DELETE"});delete ST.auto[p];delete ST.tasks[p];delete ST.inflight[p];delete errs[p];save();setCur("");await refresh();break;
-    case "cfgSave":{const ta=$("#cfgText");
-      try{const r=await api(`/api/projects/${p}/config`,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({text:ta.value})});
-        cfgDraft=null;$("#cfgMsg").innerHTML=r.warnings.length?`<span class="warn">${r.warnings.map(esc).join("<br>")}</span>`:`<span class="ok">${t("saved")}</span>`;
-        if(!r.warnings.length)setTimeout(refresh,600)}
-      catch(err){$("#cfgMsg").innerHTML=`<span class="err">${esc(err.message)}</span>`}break}
-  }}catch(err){toast(err.message,false,"err")}
+  const el=e.target.closest("[data-act],[data-g]");if(!el)return;
+  const r=parseRoute(),S=r.v==="char"?P(r.p):null,act=el.dataset.act;
+  if(el.dataset.g&&!act){
+    if(el.dataset.g==="q"){qsel[S.name]=el.dataset.v;adv[S.name]={open:!!$(".adv")?.open};render();return}
+    const o=opts[S.name];o[el.dataset.g]=el.dataset.v;
+    el.parentElement.querySelectorAll(".tile").forEach(x=>x.classList.toggle("sel",x===el));pv(S);return;
+  }
+  switch(act){
+    case"lang":lang=lang==="zh"?"en":"zh";try{localStorage.setItem("xs_lang",lang)}catch(_){}lastHTML="";$("#lbHost").dataset.key="";render();break;
+    case"settings":openSettings();break;
+    case"pickModel":$("#fModel").click();break;
+    case"pickVideo":$("#fVideo").click();break;
+    case"reimport":$("#fRig").click();break;
+    case"info":openInfo();break;
+    case"closeSheet":closeSheet();break;
+    case"veil":if(e.target===el)closeSheet();break;
+    case"lbClose":go(`#/p/${encodeURIComponent(r.p)}`);break;
+    case"lbBack":if(e.target===el)go(`#/p/${encodeURIComponent(r.p)}`);break;
+    case"copy":{const txt=$("#promptText").textContent;try{await navigator.clipboard.writeText(txt)}catch(_){const ta=document.createElement("textarea");ta.value=txt;document.body.appendChild(ta);ta.select();document.execCommand("copy");ta.remove()}
+      el.querySelector("span").textContent=t("copied");setTimeout(()=>{const s=el.querySelector("span");if(s)s.textContent=t("copy")},1800);break}
+    case"genFrame":el.disabled=true;guard(async()=>{await send(`/api/projects/${encodeURIComponent(S.name)}/run/start_frame`,opts[S.name]);go(`#/p/${encodeURIComponent(S.name)}${S.model?"/train":""}`)});break;
+    case"train":{const q=qsel[S.name]||S.quality||"std",b={quality:q};
+      const n=+($("#advN")?.value||0),s=+($("#advS")?.value||0);
+      if($(".adv")?.open){if(n&&n!==presets?.[q]?.samples)b.samples=n;if(s&&s!==presets?.[q]?.steps)b.steps=s}
+      el.disabled=true;guard(async()=>{await send(`/api/projects/${encodeURIComponent(S.name)}/run/build`,b);go(`#/p/${encodeURIComponent(S.name)}`)});break}
+    case"process":el.disabled=true;guard(()=>send(`/api/projects/${encodeURIComponent(S.name)}/videos/${encodeURIComponent(el.dataset.v)}/run/process`));break;
+    case"delVid":if(confirm(t("delVid")))guard(()=>api(`/api/projects/${encodeURIComponent(S.name)}/videos/${encodeURIComponent(el.dataset.v)}`,{method:"DELETE"}));break;
+    case"delChar":if(confirm(t("delConfirm",S.name)))guard(async()=>{await api(`/api/projects/${encodeURIComponent(S.name)}`,{method:"DELETE"});closeSheet();go("#/")});break;
+    case"saveCfg":guard(async()=>{const w=await send(`/api/projects/${encodeURIComponent(S.name)}/config`,{text:$("#cfgText").value},"PUT");
+      $("#cfgMsg").textContent=t("saved")+((w.warnings||[]).length?" · "+w.warnings.join(" · "):"")});break;
+    case"saveSet":guard(async()=>{settings=await send("/api/settings",{blender:$("#blenderIn").value});$("#setMsg").textContent=t("saved")});break;
+    case"example":{const x=el.dataset.x,n=prompt(t("exName"),x);if(!n)return;guard(async()=>{await send("/api/projects",{name:n.trim(),example:x});closeSheet();go(`#/p/${encodeURIComponent(n.trim())}`)});break}
+    case"log":openLog(el.dataset.job);break;
+    case"cancelJob":guard(()=>send(`/api/jobs/${el.dataset.job}/cancel`));break;
+    case"dismiss":dismissed.add(el.dataset.job);try{localStorage.setItem("xs_dismissed",JSON.stringify([...dismissed].slice(-50)))}catch(_){}render();break;
+  }
 });
+document.addEventListener("toggle",e=>{if(e.target.classList?.contains("adv")){const S=P(parseRoute().p);if(S)adv[S.name]={...(adv[S.name]||{}),open:e.target.open}}},true);
+document.addEventListener("input",e=>{const S=P(parseRoute().p);if(!S)return;
+  if(e.target.id==="advN")adv[S.name]={...(adv[S.name]||{}),open:true,samples:e.target.value};
+  if(e.target.id==="advS")adv[S.name]={...(adv[S.name]||{}),open:true,steps:e.target.value}});
+$("#fModel").onchange=e=>{handleFiles(e.target.files);e.target.value=""};
+$("#fVideo").onchange=e=>{handleFiles(e.target.files);e.target.value=""};
+$("#fRig").onchange=e=>{const f=e.target.files[0],S=P(parseRoute().p);e.target.value="";if(!f||!S)return;closeSheet();
+  guard(async()=>{uploading.push(f.name);render();try{await upload(`/api/projects/${encodeURIComponent(S.name)}/rig`,f,{reset_config:"0"})}finally{uploading.shift()}})};
+addEventListener("keydown",e=>{if(e.key!=="Escape")return;if($("#sheetHost").innerHTML)closeSheet();else{const r=parseRoute();if(r.vid)go(`#/p/${encodeURIComponent(r.p)}`)}});
 
-(async()=>{applyLang();
+/* drag and drop anywhere */
+let dragDepth=0;
+const hasFiles=e=>[...(e.dataTransfer?.types||[])].includes("Files");
+addEventListener("dragenter",e=>{if(!hasFiles(e))return;e.preventDefault();dragDepth++;
+  if(!$(".dropov")){const r=parseRoute(),d=document.createElement("div");d.className="dropov";d.textContent=r.v==="char"&&P(r.p)?.model?t("dropVideo"):t("dropModel");$("#ovHost").appendChild(d)}});
+addEventListener("dragover",e=>{if(hasFiles(e))e.preventDefault()});
+addEventListener("dragleave",e=>{if(!hasFiles(e))return;if(--dragDepth<=0){dragDepth=0;$(".dropov")?.remove()}});
+addEventListener("drop",e=>{if(!hasFiles(e))return;e.preventDefault();dragDepth=0;$(".dropov")?.remove();handleFiles(e.dataTransfer.files)});
+
+addEventListener("hashchange",()=>{closeSheet();render()});
+let rz;addEventListener("resize",()=>{clearTimeout(rz);rz=setTimeout(()=>{const S=P(parseRoute().p);if(S&&lastView==="setup")pv(S)},80)});
+
+(async()=>{
   try{settings=await api("/api/settings")}catch(e){settings={blender:"",examples:[]}}
-  await pollJobs(true);await refresh();setInterval(()=>pollJobs(false),1200)})();
+  try{presets=await api("/api/presets")}catch(e){}
+  refresh();
+})();
 </script>
 </body>
 </html>

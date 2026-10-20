@@ -5,4 +5,5 @@ weights/
 workspace/
 settings.json
 *.blend1
-.claude/
+.claude/*
+!.claude/skills/

@@ -5,6 +5,7 @@ import argparse, glob, json, os, re, shutil, subprocess, sys, threading, time, u
 from collections import deque
 
 import cv2
+import numpy as np
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -63,12 +64,23 @@ def video_dir(p, v):
 class Job:
     """Sequential stages; each stage is a list of commands run in parallel. Progress from 'PROGRESS a/b' or a
     count of lines matching stage['count'] (e.g. 'SAMPLE ')."""
-    def __init__(self, project, title, stages, log_path):
+    def __init__(self, project, title, stages, log_path, est=None):
         self.id = uuid.uuid4().hex[:10]; self.project = project; self.title = title
         self.stages = stages; self.stage = 0; self.frac = 0.0
         self.status = "queued"; self.error = ""; self.log = deque(maxlen=4000); self.nlines = 0
-        self.procs = []; self.cancelled = False; self.t0 = time.time(); self.t1 = None
-        self.log_path = log_path
+        self.procs = []; self.cancelled = False; self.t0 = time.time(); self.t1 = None; self.t_run = None
+        self.log_path = log_path; self.est = est          # est = expected wall time in seconds (optional)
+
+    def eta(self):
+        """Seconds left: the up-front estimate early on, then more and more the measured rate."""
+        if self.status not in ("queued", "running"): return 0
+        p = self.progress(); el = time.time() - (self.t_run or time.time())
+        r1 = el * (1 - p) / p if p > 0.005 and el > 5 else None
+        r0 = self.est * (1 - p) if self.est else None
+        if r0 is None: return None if r1 is None else round(r1)
+        if r1 is None: return round(r0)
+        w = min(1.0, p / 0.15)
+        return round(w * r1 + (1 - w) * r0)
 
     def add(self, line):
         self.log.append(line); self.nlines += 1
@@ -80,7 +92,7 @@ class Job:
         return 1.0 if self.status == "done" else done / sum(w)
 
     def run(self):
-        self.status = "running"
+        self.status = "running"; self.t_run = time.time()
         env = dict(os.environ, PYTHONUNBUFFERED="1", HF_HUB_OFFLINE="1", PYTHONIOENCODING="utf-8")
         try:
             for i, st in enumerate(self.stages):
@@ -140,7 +152,7 @@ class Job:
                 "error": self.error, "progress": round(self.progress(), 4),
                 "stage": self.stages[min(self.stage, len(self.stages) - 1)]["label"],
                 "stage_index": self.stage, "stages": len(self.stages), "elapsed": round((self.t1 or time.time()) - self.t0),
-                "lines": new, "next": self.nlines}
+                "eta": self.eta(), "est": self.est, "started": self.t0, "lines": new, "next": self.nlines}
 
 
 JOBS = {}
@@ -161,9 +173,9 @@ def worker():
 threading.Thread(target=worker, daemon=True).start()
 
 
-def submit(project, title, stages):
+def submit(project, title, stages, est=None):
     os.makedirs(ws(project, "logs"), exist_ok=True)
-    job = Job(project, title, stages, ws(project, "logs", time.strftime("%Y%m%d-%H%M%S") + f"_{title}.log"))
+    job = Job(project, title, stages, ws(project, "logs", time.strftime("%Y%m%d-%H%M%S") + f"_{title}.log"), est)
     JOBS[job.id] = job
     with LOCK: QUEUE.append(job)
     return job
@@ -177,6 +189,106 @@ def blender(*args):
 
 def py(script, *args):
     return [sys.executable, os.path.join(SRC, script), *args]
+
+
+# ---------------------------------------------------------------- presets + start-frame options
+# measured on an RTX 5060 Ti: Blender ~0.81 s per sample per worker (2 views + afterimages), training ~0.34 s/step
+RATE_RENDER, RATE_TRAIN = 0.81, 0.34
+QUALITY = {"fast": {"samples": 600, "steps": 3000}, "std": {"samples": 1500, "steps": 6000},
+           "fine": {"samples": 3000, "steps": 12000}}
+
+
+def est_build(n, w, steps, render=True):
+    return (n * RATE_RENDER / max(1, w) if render else 0) + steps * RATE_TRAIN + 40
+
+
+SF_VIEWS = {"fs": None,                                                        # front over side (default)
+            "ft": [{"az_deg": "front"}, {"az_deg": "side", "tilt_deg": 90}],   # front over top
+            "st": [{"az_deg": "side"}, {"az_deg": "side", "tilt_deg": 90}]}    # side over top
+SF_RATIOS = {"3:4": (3, 4), "4:3": (4, 3), "16:9": (16, 9), "9:16": (9, 16)}
+
+
+def start_options(cfg):
+    """{views, layout, ratio} as the UI shows them, from the config (stored, or derived for older projects)."""
+    sf = cfg["start_frame"]
+    if isinstance(sf.get("options"), dict): return sf["options"]
+    v = sf.get("views") or [{}, {}]
+    v0, v1 = (v + [{}, {}])[:2]
+    views = "st" if (v0 or {}).get("az_deg") == "side" else "ft" if float((v1 or {}).get("tilt_deg") or 0) >= 60 else "fs"
+    layout = sf.get("layout") or cfg["video"]["layout"] or "tb"
+    W, H = float(sf["panel_width"]), float(sf["panel_height"])
+    r = (2 * W / H) if layout == "lr" else W / (2 * H)
+    ratio = min(SF_RATIOS, key=lambda k: abs(SF_RATIOS[k][0] / SF_RATIOS[k][1] - r))
+    return {"views": views, "layout": layout if layout in ("tb", "lr") else "tb", "ratio": ratio}
+
+
+def apply_start_options(d, o):
+    views, layout, ratio = o.get("views", "fs"), o.get("layout", "tb"), o.get("ratio", "3:4")
+    if views not in SF_VIEWS or layout not in ("tb", "lr") or ratio not in SF_RATIOS:
+        raise HTTPException(400, "views fs|ft|st, layout tb|lr, ratio 3:4|4:3|16:9|9:16")
+    P = Q.paths(d)
+    raw = json.load(open(P["config"], encoding="utf-8"))
+    rw, rh = SF_RATIOS[ratio]
+    pw, ph = (rw, rh / 2) if layout == "tb" else (rw / 2, rh)              # one panel of the whole video frame
+    k = 1536 / max(pw, ph)
+    sf = raw.setdefault("start_frame", {})
+    sf.update(panel_width=int(round(pw * k / 16) * 16), panel_height=int(round(ph * k / 16) * 16),
+              views=SF_VIEWS[views], layout=layout, options={"views": views, "layout": layout, "ratio": ratio})
+    raw.setdefault("video", {})["layout"] = layout
+    r = raw.setdefault("render", {})
+    r["view0"] = "side" if views == "st" else "front"                     # training cameras match the panels
+    r["top_fraction"] = 0.0 if views == "fs" else (float(r.get("top_fraction") or 0) or 0.5)
+    Q.save(d, raw)
+    return sf["options"]
+
+
+# ---------------------------------------------------------------- thumbnails (cv2)
+def subject_box(img):
+    """Bounding box of whatever differs from the border colour (start frames and Seedance videos: plain backdrop)."""
+    b = np.concatenate([img[:4].reshape(-1, 3), img[-4:].reshape(-1, 3), img[:, :4].reshape(-1, 3), img[:, -4:].reshape(-1, 3)])
+    bg = np.median(b, 0)
+    m = (np.abs(img.astype(np.int16) - bg).max(2) > 32).astype(np.uint8)
+    m[:8] = m[-8:] = 0; m[:, :8] = m[:, -8:] = 0                     # panel divider / edge pixels
+    m = cv2.morphologyEx(m, cv2.MORPH_OPEN, np.ones((5, 5), np.uint8))
+    ys, xs = np.nonzero(m)
+    if len(xs) < 50: return None, bg
+    x0, x1, y0, y1 = np.percentile(xs, 0.5), np.percentile(xs, 99.5), np.percentile(ys, 0.5), np.percentile(ys, 99.5)
+    return (x0, y0, x1, y1), bg
+
+
+def tight_crop(img, aspect, pad=0.14, out_w=800):
+    h, w = img.shape[:2]
+    box, bg = subject_box(img)
+    if box is None or (box[2] - box[0]) * (box[3] - box[1]) > 0.85 * w * h:
+        box = (0, 0, w, h); pad = 0
+    x0, y0, x1, y1 = box
+    cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
+    bw, bh = (x1 - x0) * (1 + 2 * pad), (y1 - y0) * (1 + 2 * pad)
+    bw, bh = max(bw, bh * aspect), max(bh, bw / aspect)
+    X0, Y0 = int(round(cx - bw / 2)), int(round(cy - bh / 2)); X1, Y1 = X0 + int(round(bw)), Y0 + int(round(bh))
+    P = max(0, -X0, -Y0, X1 - w, Y1 - h)
+    big = cv2.copyMakeBorder(img, P, P, P, P, cv2.BORDER_CONSTANT, value=[int(c) for c in bg])
+    crop = big[Y0 + P:Y1 + P, X0 + P:X1 + P]
+    return cv2.resize(crop, (out_w, int(round(out_w / aspect))), interpolation=cv2.INTER_AREA)
+
+
+def panel_of(img, layout, i):
+    h, w = img.shape[:2]
+    if layout == "lr": return img[:, :w // 2] if i == 0 else img[:, w // 2:]
+    return img[:h // 2] if i == 0 else img[h // 2:]
+
+
+def cover_panel(cfg):
+    """Which panel shows the character best: the side view (2nd panel for 'fs', 1st for 'st'), else the front."""
+    return 1 if start_options(cfg)["views"] == "fs" else 0
+
+
+def cached_jpg(out, src, make):
+    if not (os.path.exists(out) and os.path.getmtime(out) >= os.path.getmtime(src)):
+        img = make()
+        if img is None: raise HTTPException(404, "no image")
+        cv2.imwrite(out, img, [cv2.IMWRITE_JPEG_QUALITY, 88])
+    return FileResponse(out, headers={"Cache-Control": "no-cache"})
 
 
 # ---------------------------------------------------------------- status
@@ -193,7 +305,32 @@ def video_status(d):
         cap = cv2.VideoCapture(vd("source.mp4"))
         st["size"] = [int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))]
         st["frames"] = int(cap.get(cv2.CAP_PROP_FRAME_COUNT)); st["fps"] = cap.get(cv2.CAP_PROP_FPS); cap.release()
+        st["duration"] = round(st["frames"] / st["fps"], 1) if st["fps"] else 0
+    if st["compare"]: st["compare_mtime"] = int(os.path.getmtime(vd("fit", "compare.mp4")))
     return st
+
+
+def job_brief(j):
+    return {k: v for k, v in j.info(10 ** 9).items() if k != "lines"}
+
+
+def project_jobs(p):
+    """Active job of the project (queued/running) and the latest job per video id, newest first."""
+    js = sorted((j for j in JOBS.values() if j.project == p), key=lambda j: -j.t0)
+    active = next((j for j in js if j.status in ("queued", "running")), None)
+    per_video = {}
+    for j in js:
+        m = re.match(r"(?:detect_fit|preview|export|process)_(.+)$", j.title)
+        if m and m.group(1) not in per_video: per_video[m.group(1)] = j
+    return active, per_video, (js[0] if js else None)
+
+
+def action_count(P):
+    if not os.path.exists(P["poses"]): return 0
+    try:
+        with np.load(P["poses"]) as z: return len(z["actions"]) if "actions" in z.files else 1
+    except Exception:
+        return 1
 
 
 def project_status(p):
@@ -206,6 +343,8 @@ def project_status(p):
         try:
             c = Q.load(d); st["keypoints"] = len(c["keypoints"]); st["render_samples"] = c["render"]["samples"]
             st["train_steps"] = c["train"]["steps"]; st["config_name"] = c["name"]
+            st["start_options"] = start_options(c); st["quality"] = c["train"].get("quality")
+            st["layout"] = c["video"]["layout"]
             st["config_warnings"] = validate_config(d, json.load(open(P["config"], encoding="utf-8")))[:8]
         except Exception as e:
             st["config_error"] = str(e)
@@ -218,6 +357,14 @@ def project_status(p):
     vdir = P["videos"]
     st["videos"] = [video_status(v) for v in sorted(glob.glob(os.path.join(vdir, "*"))) if os.path.isdir(v)]
     st["busy"] = any(j.project == p and j.status in ("queued", "running") for j in JOBS.values())
+    st["actions"] = action_count(P)
+    if st["start_frame"]: st["start_mtime"] = int(os.path.getmtime(P["start_png"]))
+    active, per_video, last = project_jobs(p)
+    st["job"] = job_brief(active) if active else None
+    st["last_job"] = job_brief(last) if last else None
+    for v in st["videos"]:
+        j = per_video.get(v["id"])
+        v["job"] = job_brief(j) if j else None
     return st
 
 
@@ -235,6 +382,68 @@ def set_settings(body: dict):
     if "blender" in body: S["blender"] = body["blender"].strip().strip('"')
     json.dump({"blender": S["blender"], "workspace": S["workspace"]}, open(SETTINGS_FILE, "w", encoding="utf-8"), indent=1)
     return get_settings()
+
+
+@app.get("/api/presets")
+def presets():
+    w = int(Q.DEFAULTS["render"]["workers"])
+    return {k: {**v, "minutes": int(round(est_build(v["samples"], w, v["steps"]) / 60 / 5) * 5)} for k, v in QUALITY.items()}
+
+
+@app.post("/api/import")
+async def import_rig(file: UploadFile = File(...), name: str = Form("")):
+    """Drop a rigged model -> new project named after the file, import job started."""
+    ext = os.path.splitext(file.filename)[1].lower()
+    if ext not in (".blend", ".fbx", ".glb", ".gltf"): raise HTTPException(400, "upload a .blend, .fbx or .glb")
+    base = re.sub(r"[^A-Za-z0-9_\-]+", "_", name or os.path.splitext(os.path.basename(file.filename))[0]).strip("_-")[:32]
+    base = base if re.match(r"[A-Za-z0-9]", base or "") else "character"
+    p, k = base, 1
+    while os.path.exists(ws(p)):
+        k += 1; p = f"{base}_{k}"
+    d = ws(p); P = Q.paths(d)
+    os.makedirs(os.path.dirname(P["source"]))
+    dst = P["source"] if ext == ".blend" else os.path.join(os.path.dirname(P["source"]), "source" + ext)
+    with open(dst, "wb") as f:
+        shutil.copyfileobj(file.file, f)
+    job = submit(p, "import_rig", [prep_stage(d, dst)])
+    return {"name": p, "job": job.id}
+
+
+@app.get("/api/projects/{p}/start_frame_options")
+def get_start_options(p: str):
+    d = project_dir(p)
+    if not os.path.exists(Q.paths(d)["config"]): raise HTTPException(400, "import the rig first")
+    return start_options(Q.load(d))
+
+
+@app.put("/api/projects/{p}/start_frame_options")
+def put_start_options(p: str, body: dict):
+    d = project_dir(p)
+    if not os.path.exists(Q.paths(d)["config"]): raise HTTPException(400, "import the rig first")
+    return apply_start_options(d, body)
+
+
+@app.get("/api/projects/{p}/cover.jpg")
+def cover(p: str):
+    d = project_dir(p); P = Q.paths(d)
+    if not os.path.exists(P["start_png"]): raise HTTPException(404, "no start frame yet")
+    cfg = Q.load(d); lay = start_options(cfg)["layout"]; i = cover_panel(cfg)
+    return cached_jpg(os.path.join(P["start"], "cover.jpg"), P["start_png"],
+                      lambda: tight_crop(panel_of(cv2.imread(P["start_png"]), lay, i), 4 / 3))
+
+
+@app.get("/api/projects/{p}/videos/{v}/thumb.jpg")
+def video_thumb(p: str, v: str):
+    d = project_dir(p); vd = video_dir(p, v); src = os.path.join(vd, "source.mp4")
+    if not os.path.exists(src): raise HTTPException(404, "no video")
+    cfg = Q.load(d) if os.path.exists(Q.paths(d)["config"]) else Q.normalize({})
+    lay = cfg["video"]["layout"]; i = cover_panel(cfg)
+
+    def make():
+        cap = cv2.VideoCapture(src); n = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        cap.set(cv2.CAP_PROP_POS_FRAMES, max(0, int(n * 0.35))); ok, fr = cap.read(); cap.release()
+        return tight_crop(panel_of(fr, lay, i), 3 / 2, pad=0.22, out_w=720) if ok else None
+    return cached_jpg(os.path.join(vd, "thumb.jpg"), src, make)
 
 
 @app.get("/api/projects")
@@ -345,22 +554,30 @@ def run_step(p: str, step: str, body: dict = None):
     cfg = Q.load(d)
     if not cfg["keypoints"]: raise HTTPException(400, "config has no keypoints")
     if step == "start_frame":
+        if any(k in body for k in ("views", "layout", "ratio")):          # options from the UI / skill
+            apply_start_options(d, {**start_options(cfg), **body})
         st = {"label": "start frame", "cmds": [blender(P["clean"], "--python", os.path.join(SRC, "bl_start_frame.py"), "--", d)]}
-        return {"job": submit(p, "start_frame", [st]).id}
+        return {"job": submit(p, "start_frame", [st], est=40).id}
     if step in ("render", "train", "build"):
         stages = []
-        n = int(body.get("samples") or cfg["render"]["samples"]); w = max(1, int(body.get("workers") or cfg["render"]["workers"]))
-        steps = int(body.get("steps") or cfg["train"]["steps"])
+        q = QUALITY.get(body.get("quality") or "")
+        n = int(body.get("samples") or (q or {}).get("samples") or cfg["render"]["samples"])
+        w = max(1, int(body.get("workers") or cfg["render"]["workers"]))
+        steps = int(body.get("steps") or (q or {}).get("steps") or cfg["train"]["steps"])
         reuse = step == "train" or (step == "build" and body.get("reuse_data") and project_status(p)["samples"] > 0)
         if not reuse:
-            stages.append(render_stage(d, n, w, append=bool(body.get("append"))))
+            stages.append(render_stage(d, n, w, append=bool(body.get("append"))) | {"weight": n * RATE_RENDER / w})
         if step != "render":
-            # weights ~ wall time: rendering ~0.5 s/sample/worker, training ~0.28 s/step on an RTX 5060 Ti
-            stages.append({"label": f"train {steps} steps", "weight": max(0.1, steps * 0.28 / max(1.0, n * 0.5 / w)),
+            # weights ~ wall time (seconds), see RATE_RENDER / RATE_TRAIN
+            stages.append({"label": f"train {steps} steps", "weight": steps * RATE_TRAIN,
                            "cmds": [py("train.py", "--project", d, "--steps", str(steps))]})
             if reuse and not glob.glob(os.path.join(P["data"], "labels_*.json")):
                 raise HTTPException(400, "no training data yet: untick 'reuse data'")
-        return {"job": submit(p, step, stages).id}
+        if q and step == "build":                                           # remember the chosen quality for the UI
+            raw = json.load(open(P["config"], encoding="utf-8"))
+            raw.setdefault("train", {})["quality"] = body["quality"]; Q.save(d, raw)
+        est = est_build(n, w, steps if step != "render" else 0, render=not reuse)
+        return {"job": submit(p, step, stages, est=est).id}
     raise HTTPException(404, "unknown step")
 
 
@@ -404,28 +621,40 @@ def delete_video(p: str, v: str):
 def run_video_step(p: str, v: str, step: str, body: dict = None):
     body = body or {}
     d = project_dir(p); vd = video_dir(p, v); P = Q.paths(d)
-    if project_status(p)["busy"]: raise HTTPException(400, "a job is already running for this project")
+    busy = [j for j in JOBS.values() if j.project == p and j.status in ("queued", "running")]
+    if any(j.title == f"process_{v}" for j in busy): raise HTTPException(400, "this video is already being processed")
+    if busy and not (step == "process" and all(j.title.startswith("process_") for j in busy)):   # several videos may queue
+        raise HTTPException(400, "a job is already running for this project")
     for need, msg in ((P["clean"], "import the rig first"), (P["cams"], "make the start frame first (cameras.json)")):
         if not os.path.exists(need): raise HTTPException(400, msg)
     src = os.path.join(vd, "source.mp4"); fd = os.path.join(vd, "fit")
-    if step == "detect_fit":
+
+    def detect_fit_stages(mode):
+        return [{"label": "detect keypoints", "cmds": [py("predict.py", "--project", d, "--src", src, "--out", os.path.join(vd, "det"))]},
+                {"label": "fit rig", "weight": 2.0,
+                 "cmds": [py("fit.py", "--project", d, "--pred", os.path.join(vd, "det", "pred.npz"), "--out", fd, "--mode", mode)]}]
+
+    def preview_stages():
+        W, H = video_status(vd)["size"]
+        PW, PH = (W // 2, H) if Q.load(d)["video"]["layout"] == "lr" else (W, H // 2)    # one panel
+        return [{"label": "render fitted rig", "weight": 3.0,
+                 "cmds": [blender(P["clean"], "--python", os.path.join(SRC, "bl_apply.py"), "--", d, fd, "render", str(PW), str(PH))]},
+                {"label": "compose comparison", "weight": 0.5, "cmds": [py("compose_compare.py", src, fd)]}]
+
+    def export_stages():
+        return [{"label": f"export {m}", "weight": 0.5,
+                 "cmds": [blender(P["clean"], "--python", os.path.join(SRC, "bl_apply.py"), "--", d, fd, m)]} for m in ("blend", "fbx")]
+
+    if step in ("detect_fit", "process"):
         if not os.path.exists(P["model"]): raise HTTPException(400, "train the model first")
-        mode = body.get("mode", "ours")
-        stages = [{"label": "detect keypoints", "cmds": [py("predict.py", "--project", d, "--src", src, "--out", os.path.join(vd, "det"))]},
-                  {"label": "fit rig", "weight": 2.0,
-                   "cmds": [py("fit.py", "--project", d, "--pred", os.path.join(vd, "det", "pred.npz"), "--out", fd, "--mode", mode)]}]
-        return {"job": submit(p, f"detect_fit_{v}", stages).id}
+        if step == "process":                     # the one-click path: detect + fit (ours) + preview + export
+            return {"job": submit(p, f"process_{v}", detect_fit_stages("ours") + preview_stages() + export_stages()).id}
+        return {"job": submit(p, f"detect_fit_{v}", detect_fit_stages(body.get("mode", "ours"))).id}
     if not os.path.exists(os.path.join(fd, "fit.npz")): raise HTTPException(400, "run detect + fit first")
     if step == "preview":
-        st = video_status(vd); W, H = st["size"]
-        stages = [{"label": "render fitted rig", "weight": 3.0,
-                   "cmds": [blender(P["clean"], "--python", os.path.join(SRC, "bl_apply.py"), "--", d, fd, "render", str(W), str(H // 2))]},
-                  {"label": "compose comparison", "cmds": [py("compose_compare.py", src, fd)]}]
-        return {"job": submit(p, f"preview_{v}", stages).id}
+        return {"job": submit(p, f"preview_{v}", preview_stages()).id}
     if step == "export":
-        stages = [{"label": f"export {m}", "cmds": [blender(P["clean"], "--python", os.path.join(SRC, "bl_apply.py"), "--", d, fd, m)]}
-                  for m in ("blend", "fbx")]
-        return {"job": submit(p, f"export_{v}", stages).id}
+        return {"job": submit(p, f"export_{v}", export_stages()).id}
     raise HTTPException(404, "unknown step")
 
 

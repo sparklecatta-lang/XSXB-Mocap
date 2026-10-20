@@ -13,6 +13,7 @@ PROJECT = sys.argv[sys.argv.index("--") + 1:][0]
 cfg = Q.load(PROJECT); P = Q.paths(PROJECT); OUT = P["start"]
 sf = cfg["start_frame"]
 W, H, TILT = int(sf["panel_width"]), int(sf["panel_height"]), float(sf["tilt_deg"])
+LR = sf.get("layout", "tb") == "lr"                  # panels side by side instead of stacked
 os.makedirs(OUT, exist_ok=True)
 sc = bpy.context.scene
 arm = bpy.data.objects[cfg["armature"]]; me = bpy.data.objects[cfg["mesh"]]
@@ -24,7 +25,8 @@ co = np.array([me.matrix_world @ v.co for v in mm.vertices]); ev.to_mesh_clear()
 zmin = co[:, 2].min(); arm.location.z -= zmin
 ctr = (co.min(0) + co.max(0)) / 2; ctr[2] -= zmin
 ext = co.max(0) - co.min(0)
-ORTHO_W = float(sf["ortho_width_m"] or 2.0 * max(ext[0], ext[1]))     # body length ~ half the panel width
+ORTHO_W = float(sf["ortho_width_m"] or max(2.0 * max(ext[0], ext[1]),  # body length ~ half the panel width
+                                           1.4 * max(ext[2], min(ext[0], ext[1])) * W / H))   # wide panels: keep height room
 AIM_Z = float(sf["aim_height_m"] or 0.4865 * ext[2])
 bpy.context.view_layer.update()
 
@@ -67,11 +69,12 @@ def place(az_deg):
 
 
 cams = {}
-for i, (name, az, yoff) in enumerate((("front", AZ_F, 0), ("side", AZ_S, H))):
+for i, (name, az) in enumerate((("front", AZ_F), ("side", AZ_S))):
+    xoff, yoff = (i * W, 0) if LR else (0, i * H)
     place(az)
     Pm = np.array(cam.calc_matrix_camera(bpy.context.evaluated_depsgraph_get(), x=W, y=H)) @ np.array(cam.matrix_world.inverted())
-    Kp = np.array([[W / 2, 0, 0, W / 2], [0, -H / 2, 0, H / 2 + yoff], [0, 0, 0, 1]])   # NDC -> stacked-image px
-    cams[name] = {"P_pixels": (Kp @ Pm).tolist(), "panel_y0": yoff, "az_deg": az, "tilt_deg": TILT,
+    Kp = np.array([[W / 2, 0, 0, W / 2 + xoff], [0, -H / 2, 0, H / 2 + yoff], [0, 0, 0, 1]])   # NDC -> stacked-image px
+    cams[name] = {"P_pixels": (Kp @ Pm).tolist(), "panel_y0": yoff, "panel_x0": xoff, "az_deg": az, "tilt_deg": TILT,
                   "ortho_width_m": ORTHO_W, "location": list(cam.location), "rotation_euler": list(cam.rotation_euler)}
     sc.render.filepath = f"{OUT}/panel_{name}.png"
     bpy.ops.render.render(write_still=True)
@@ -80,12 +83,15 @@ for i, (name, az, yoff) in enumerate((("front", AZ_F, 0), ("side", AZ_S, H))):
 # stack: top = front, bottom = side, thin divider drawn over the seam (geometry unchanged)
 imgs = [bpy.data.images.load(f"{OUT}/panel_{k}.png") for k in ("front", "side")]
 px = [np.array(im.pixels[:], np.float32).reshape(H, W, 4) for im in imgs]   # bottom-up rows
-full = np.concatenate([px[1], px[0]], 0)
-full[H - 2:H + 2, :, :3] = 0.25
-out = bpy.data.images.new("start_frame", W, 2 * H, alpha=False)
+if LR:
+    full = np.concatenate([px[0], px[1]], 1); full[:, W - 2:W + 2, :3] = 0.25
+else:
+    full = np.concatenate([px[1], px[0]], 0); full[H - 2:H + 2, :, :3] = 0.25
+IW, IH = (2 * W, H) if LR else (W, 2 * H)
+out = bpy.data.images.new("start_frame", IW, IH, alpha=False)
 out.pixels[:] = full.ravel()
 out.filepath_raw = P["start_png"]; out.file_format = 'PNG'; out.save()
 
-json.dump({"image_size": [W, 2 * H], "panels": cams, "armature_location": list(arm.location)},
+json.dump({"image_size": [IW, IH], "layout": "lr" if LR else "tb", "panels": cams, "armature_location": list(arm.location)},
           open(P["cams"], "w"), indent=1)
 print("START_FRAME_DONE", flush=True)

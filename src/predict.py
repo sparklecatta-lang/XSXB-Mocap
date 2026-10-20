@@ -1,6 +1,6 @@
 """Run the trained head on a two-panel video (or images) and draw keypoints + dense map.
 python src/predict.py --project PROJECT --src VIDEO --out OUTDIR [--ckpt head.pt]
-       [--crops tb | "x0,y0,x1,y1;..."]   (tb = top/bottom halves; default from config "video.layout")
+       [--crops tb | lr | "x0,y0,x1,y1;..."]   (tb/lr = top/bottom or left/right halves; default from config "video.layout")
        [--every N] [--max N]
 Saves pred.npz (kp[x,y] in source pixels, kp score, dense map, per frame/view), overlay.mp4 and PNGs.
 """
@@ -63,6 +63,8 @@ def main():
         H, W = frame.shape[:2]
         if a.crops == "tb":                                   # Seedance layout: top = front, bottom = side
             crops = [(0, 0, W, H // 2), (0, H // 2, W, H)]
+        elif a.crops == "lr":                                 # left = first view, right = second view
+            crops = [(0, 0, W // 2, H), (W // 2, 0, W, H)]
         elif a.crops:
             crops = [tuple(map(int, c.split(","))) for c in a.crops.split(";")]
         else:

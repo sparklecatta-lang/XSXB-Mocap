@@ -15,8 +15,13 @@ while True:
     H, W = fr.shape[:2]
     rf = cv2.imread(f"{fd}/render/front_{t:05d}.jpg"); rs = cv2.imread(f"{fd}/render/side_{t:05d}.jpg")
     if rf is None: break
-    rf = cv2.resize(rf, (W, H // 2)); rs = cv2.resize(rs, (W, H - H // 2))
-    top = np.hstack([fr[:H // 2], rf]); bot = np.hstack([fr[H // 2:], rs])
+    lr = abs(rf.shape[1] / rf.shape[0] - W / (2 * H)) < abs(rf.shape[1] / rf.shape[0] - 2 * W / H)
+    if lr:                                                      # left/right video: one row per view
+        rf = cv2.resize(rf, (W // 2, H)); rs = cv2.resize(rs, (W - W // 2, H))
+        top = np.hstack([fr[:, :W // 2], rf]); bot = np.hstack([fr[:, W // 2:], rs])
+    else:
+        rf = cv2.resize(rf, (W, H // 2)); rs = cv2.resize(rs, (W, H - H // 2))
+        top = np.hstack([fr[:H // 2], rf]); bot = np.hstack([fr[H // 2:], rs])
     img = np.vstack([top, bot])
     cv2.putText(img, f"{t}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 0, 200), 2)
     if writer is None:

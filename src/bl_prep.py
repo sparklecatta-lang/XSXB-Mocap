@@ -1,6 +1,6 @@
 """Import a rigged quadruped: clean it for synthetic data and export the rig for the fitter.
 blender -b <project>/rig/source.blend --python src/bl_prep.py -- PROJECT
-Writes rig/clean.blend, rig/rig.npz, rig/inspect.json, rig/ref_poses.npz (if the file had an action)
+Writes rig/clean.blend, rig/rig.npz, rig/inspect.json, rig/ref_poses.npz (frames of every action that moves the rig)
 and, when PROJECT/config.json does not exist yet, a draft config guessed from the bone names.
 """
 import bpy, sys, os, re, json, numpy as np
@@ -42,17 +42,33 @@ if not meshes:
     raise SystemExit("ERROR no mesh with an Armature modifier pointing at " + arm.name)
 print("ARMATURE", arm.name, "MESHES", [m.name for m in meshes], flush=True)
 
-# --- 2. reference poses from the active action (sampling prior), every frame
+# --- 2. reference poses from ALL actions that move this armature (sampling prior), every frame
 names = [b.name for b in arm.data.bones]
-act = arm.animation_data.action if arm.animation_data else None
-if act:
+ad = arm.animation_data or arm.animation_data_create()
+act0 = ad.action
+eul, act_names, act_start = [], [], []
+for act in ([act0] if act0 else []) + [a for a in bpy.data.actions if a != act0]:
+    try:
+        ad.action = act
+        if getattr(ad, "action_slot", 0) is None:                     # Blender 4.4+ slotted actions
+            slots = [s for s in getattr(act, "slots", []) if getattr(s, "target_id_type", "OBJECT") in ("OBJECT", "UNSPECIFIED")]
+            if slots: ad.action_slot = slots[0]
+    except Exception as ex:
+        print("WARNING skipped action", act.name, ex, flush=True); continue
+    for pb in arm.pose.bones:
+        pb.matrix_basis = Matrix.Identity(4)
     f0, f1 = int(act.frame_range[0]), int(act.frame_range[1])
-    eul = []
-    for f in range(f0, f1 + 1):
+    rows = []
+    for f in range(f0, f1 + 1, max(1, (f1 - f0 + 1) // 400)):         # at most ~400 frames per action
         sc.frame_set(f)
-        eul.append([list(arm.pose.bones[n].matrix_basis.to_euler('XZY')) for n in names])
-    np.savez(P["poses"], names=np.array(names), euler_xzy=np.array(eul, np.float32))
-    print("REF_POSES", act.name, len(eul), flush=True)
+        rows.append([list(arm.pose.bones[n].matrix_basis.to_euler('XZY')) for n in names])
+    rows = np.array(rows, np.float32)
+    if not len(rows) or np.abs(rows).max() < 1e-4: continue             # does not move this armature
+    act_names.append(act.name); act_start.append(len(eul)); eul.extend(rows)
+if eul:
+    np.savez(P["poses"], names=np.array(names), euler_xzy=np.array(eul, np.float32),
+             actions=np.array(act_names), action_start=np.array(act_start))
+    print("REF_POSES", len(act_names), "actions", len(eul), "frames", act_names, flush=True)
 elif os.path.exists(P["poses"]):
     print("REF_POSES kept existing file", flush=True)
 

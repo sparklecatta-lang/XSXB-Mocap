@@ -122,7 +122,9 @@ def main():
     vid, px, ok = dense_targets(pred, rig)
     vid, px, ok = (torch.tensor(x, device=dev) for x in (vid, px, ok))
     foot = torch.tensor([rig.kp_names.index(n) for n in cfg["foot_keypoints"] if n in rig.kp_names], device=dev, dtype=torch.long)
-    front_c = torch.tensor([W_src / 2, float(pred["src_size"][1]) / 4], device=dev)
+    lr = cams["panels"]["side"].get("panel_x0", 0) > 0                 # panels left/right instead of stacked
+    H_src = float(pred["src_size"][1])
+    front_c = torch.tensor([W_src / 4, H_src / 2] if lr else [W_src / 2, H_src / 4], device=dev)
 
     B = len(rig.names)
     e = torch.zeros(T, B, 3, device=dev, requires_grad=True)

@@ -38,6 +38,8 @@ if os.path.exists(PATHS["poses"]):
     for j, n in enumerate(rn):
         if n in IDX: REF[:, IDX[n]] = rp["euler_xzy"][:, j]
 HAS_REF = os.path.exists(PATHS["poses"])
+ACT_FRAC = float(RC.get("action_fraction", 0.3)) if HAS_REF else 0.0   # samples posed from the rig's own actions
+V0_SIDE = str(RC.get("view0", "front")) == "side"                       # first panel is a side view too
 
 LIM = [None if (L := Q.bone_limits_deg(cfg, n, names)) is None else np.radians(np.array(L, float)) for n in names]
 HELP = [(i, IDX[s[0]], s[1]) for i, n in enumerate(names) if (s := Q.helper_source(cfg, n, names))]
@@ -52,6 +54,13 @@ AZ_F, AZ_S = Q.view_azimuths_deg(cfg)
 
 
 def sample_pose():
+    if rng.random() < ACT_FRAC:                     # a frame of one of the rig's actions, lightly perturbed
+        e = REF[rng.integers(len(REF))] + rng.normal(0, 1, (B, 3)) * np.radians([4, 2, 2])
+        for i, L in enumerate(LIM):
+            e[i] = 0.0 if L is None else np.clip(e[i], L[:, 0], L[:, 1])
+        for i, s, fac in HELP:
+            e[i] = fac * e[s]
+        return e
     e = np.zeros((B, 3))
     mode = rng.random()
     base = REF[rng.integers(len(REF))] if (HAS_REF and rng.random() < 0.8) else np.zeros((B, 3))
@@ -178,7 +187,7 @@ def look_at(obj, eye, target):
 def setup_camera(V, view):
     ctr = (V.min(0) + V.max(0)) / 2
     rad = float(np.linalg.norm(V - ctr, axis=1).max())
-    if view == 0:
+    if view == 0 and not V0_SIDE:
         az = math.radians(AZ_F + rng.uniform(-30, 30))
     else:
         az = math.radians(AZ_S + (0 if rng.random() < 0.7 else 180) + rng.uniform(-30, 30))

@@ -23,15 +23,18 @@ DEFAULTS = {
     "helper_bones": [],                    # [{"match": regex, "source": replacement, "factor": 0.5}] follow another bone
     "smooth_chains": [],                   # [{"match": regex, "amp_deg": [x, z]}] e.g. tails: sampled as one smooth curve
     "start_frame": {"panel_width": 1536, "panel_height": 1024, "tilt_deg": 8.0,
-                    "ortho_width_m": None, "aim_height_m": None},   # null = derived from the mesh size
+                    "ortho_width_m": None, "aim_height_m": None,    # null = derived from the mesh size
+                    "layout": "tb"},                                # tb = panels stacked top/bottom, lr = left/right
     "render": {"resolution": 448, "samples": 1500, "workers": 3, "near_ref_fraction": 0.45,
                "symmetric_fraction": 0.3, "body_pitch_deg": 35, "body_roll_deg": 15,
-               "motion_fraction": 0.3},          # share of samples with afterimages of fast limb / tail motion
+               "motion_fraction": 0.3,           # share of samples with afterimages of fast limb / tail motion
+               "action_fraction": 0.3,           # share of samples posed from the rig's own actions (+ small noise)
+               "view0": "front"},                # first-panel training camera: "front" | "side"
     "train": {"steps": 6000, "batch": 16, "lr": 1e-3, "max_deform": 0.02, "backbone": "weights/dinov2-base",
               "held_out": 100},
     "fit": {"iters": 1500, "dense_iters": 1500, "w_dense": 0.5, "w_smooth": 200.0, "smooth_delta": 0.002,
             "post_filter_hz": 6.0, "post_filter_fast": 0.05, "front_drift": True},
-    "video": {"layout": "tb", "fps": 24},  # tb = top panel front view, bottom panel side view
+    "video": {"layout": "tb", "fps": 24},  # tb = top/bottom panels, lr = left/right panels
 }
 
 AXES = {"+X": (1, 0, 0), "-X": (-1, 0, 0), "+Y": (0, 1, 0), "-Y": (0, -1, 0), "+Z": (0, 0, 1), "-Z": (0, 0, -1)}
