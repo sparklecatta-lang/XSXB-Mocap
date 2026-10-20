@@ -68,8 +68,8 @@ a{color:var(--acc)}
 </div>
 <script>
 const T={
- zh:{tagline:"四足 rig 视频动作捕捉",settings:"设置",projects:"项目",create:"新建",cancel:"取消",hide:"收起",lang:"English",
-  blank:"空项目",fromEx:"从示例复制：",s1:"导入 rig",s1d:"上传绑好骨的四足模型（.blend / .fbx / .glb）。会清理场景、导出骨骼和蒙皮，没有配置时按骨名自动生成草稿配置。",
+ zh:{tagline:"绑骨角色的视频动作捕捉",settings:"设置",projects:"项目",create:"新建",cancel:"取消",hide:"收起",lang:"English",
+  blank:"空项目",fromEx:"从示例复制：",s1:"导入 rig",s1d:"上传绑好骨的模型（.blend / .fbx / .glb）。会清理场景、导出骨骼和蒙皮，没有配置时按骨名自动生成草稿配置。",
   regen:"重新生成配置草稿",upload:"上传并导入",reprep:"重新处理当前 rig",cfg:"rig 配置",cfgd:"骨名、关键点、关节限制、辅助骨、朝向都在这里。改完保存；改了 armature/mesh 要重新导入。",
   save:"保存",saved:"已保存",s2:"生成起始帧",s2d:"上=正面，下=左侧面，同一正交比例。把这张图作为首帧交给视频模型（如 Seedance），提示里写明上下画面完全同步。",
   run:"运行",download:"下载",s3:"生成训练数据并训练",s3d:"先在关节限制内随机摆姿、双视角渲染（RGB + 表面坐标图 + 关键点标签），再训练检测头（DINOv2 主干冻结）。一次跑完；默认值就是推荐值，RTX 5060 Ti 上约 40 分钟。",
@@ -80,8 +80,8 @@ const T={
   blender:"Blender 路径",noBlender:"没找到 Blender，请在设置里填写 blender.exe 路径。",confirmDel:"确定删除？",evalTxt:"合成测试集误差 px（均值/中位数）",
   overlay:"检测叠加",compare:"左：原视频 右：拟合结果",kps:"关键点",verts:"顶点",bones:"骨骼",ref:"参考动作",startHint:"首帧图",
   jobDone:"完成",jobErr:"失败",busy:"有任务在跑"},
- en:{tagline:"video motion capture for rigged quadrupeds",settings:"Settings",projects:"Projects",create:"Create",cancel:"Cancel",hide:"Hide",lang:"中文",
-  blank:"Empty project",fromEx:"Copy example: ",s1:"Import rig",s1d:"Upload a rigged quadruped (.blend / .fbx / .glb). The scene is cleaned, bones and skin weights exported; a draft config is guessed from bone names if none exists.",
+ en:{tagline:"video motion capture for rigged characters",settings:"Settings",projects:"Projects",create:"Create",cancel:"Cancel",hide:"Hide",lang:"中文",
+  blank:"Empty project",fromEx:"Copy example: ",s1:"Import rig",s1d:"Upload a rigged character (.blend / .fbx / .glb). The scene is cleaned, bones and skin weights exported; a draft config is guessed from bone names if none exists.",
   regen:"Regenerate config draft",upload:"Upload & import",reprep:"Re-process current rig",cfg:"Rig config",cfgd:"Bone names, keypoints, joint limits, helper bones and orientation live here. Re-import after changing armature/mesh.",
   save:"Save",saved:"Saved",s2:"Start frame",s2d:"Top = front view, bottom = left side, same ortho scale. Give this image to the video model (e.g. Seedance) as the first frame; ask for both panels to stay in sync.",
   run:"Run",download:"Download",s3:"Training data + train",s3d:"Renders random poses inside the joint limits in two views (RGB + surface-coordinate map + keypoint labels), then trains the detector head on a frozen DINOv2 backbone. One run; the defaults are the recommended values (~40 min on an RTX 5060 Ti).",

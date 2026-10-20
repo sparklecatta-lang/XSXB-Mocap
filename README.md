@@ -1,6 +1,6 @@
 # QuadMocap
 
-Motion capture for **rigged quadrupeds** from AI-generated two-view videos, as a local one-click web app.
+Motion capture for **rigged characters** from AI-generated two-view videos (tested on quadrupeds), as a local one-click web app.
 You give it a rigged animal; it renders a start frame for a video model (e.g. Seedance), trains a keypoint detector on
 synthetic renders of *your* rig, and fits the rig to the generated video. Output: a Blender action, `.blend` and FBX.
 
@@ -26,7 +26,7 @@ This repository is an independent re-implementation with the changes listed belo
 | Video drift | — | The video model's front panel drifts (zoom / moves toward the camera). The fitter solves a **smooth per-frame scale + vertical shift** for the front panel |
 | Training data | — | 30 % of the synthetic samples carry **afterimages** like fast motion in generated video: faint copies of nearby limb / tail poses. Labels and mask come from the main pose only, so the detector learns to ignore the ghosts |
 | Evaluation | — | **Synthetic ground-truth benchmark**: render the rig's own animation with the same cameras, run the whole pipeline, measure 3D error |
-| Rig | One creature | **Any rigged quadruped** through one JSON config (bone names, keypoints, joint limits, helper bones, orientation) |
+| Rig | One creature | **Any rigged character** (tested on the cat and a procedural dog) through one JSON config (bone names, keypoints, joint limits, helper bones, orientation) |
 
 Other details: bone lengths are fixed (only joint rotations are solved), joint-limit / smoothness / floor terms,
 whole-sequence joint optimisation, and badly deformed synthetic samples (edge stretch) are dropped from training.
@@ -34,6 +34,7 @@ whole-sequence joint optimisation, and badly deformed synthetic samples (edge st
 ### Comparison data
 
 Same detections, same rig, only the fitting method differs (`fit.py --mode ours` vs `--mode triangulate`).
+The original author's detector was not reproduced: "original" means our detector followed by the triangulation workflow.
 
 **Synthetic walk, 120 frames, ground truth known** (mean 3D keypoint error after aligning the pelvis, cm):
 
@@ -94,6 +95,9 @@ If Blender is not found automatically, set its path under **Settings**. Each ste
    pose prior for the synthetic data.
 2. **Start frame** — renders the start image: top = front view, bottom = left side, same orthographic scale, plus
    `cameras.json`. Give the image to an image-to-video model as the first frame.
+   The cameras look down 8° by default (`start_frame.tilt_deg`), which shows the far-side feet. Against a level
+   camera (0°) it was better in our tests: 3.58 vs 3.83 cm on the synthetic walk, with the biggest gap on the tail,
+   and better on a real clip as well. Keep the default unless you have a reason not to.
 3. **Training data + train** (one run) — random poses inside the joint limits rendered in two views (RGB, a
    rest-position map, keypoint labels; 30 % with afterimages), then a small convolutional head is trained on a
    frozen DINOv2 backbone.
