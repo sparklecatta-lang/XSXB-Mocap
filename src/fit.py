@@ -7,7 +7,8 @@ import argparse, json, os, sys, time, numpy as np, torch, cv2
 from scipy.spatial import cKDTree
 from scipy.signal import butter, filtfilt
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from rigtorch import Rig
+from rigtorch import Rig, rotvec_to_matrix
+from scipy.spatial.transform import Rotation
 from train import RES, OUT_RES
 import qconfig as Q
 
@@ -94,6 +95,8 @@ def main():
     ap.add_argument("--w_dense", type=float); ap.add_argument("--w_smooth", type=float)
     ap.add_argument("--smooth_delta", type=float, help="rad/frame^2; 0 = quadratic smoothing")
     ap.add_argument("--post_filter_hz", type=float, help="de-jitter low-pass cutoff after the fit; 0 = off")
+    ap.add_argument("--views", default="both", choices=["both", "front", "side"],
+                    help="use only one panel (e.g. when the two panels of the generated video disagree); depth along that camera is then unconstrained")
     ap.add_argument("--mode", default="ours", choices=["ours", "triangulate"],
                     help="triangulate = original video workflow: keypoints only, triangulate 3D, then fit bones to 3D")
     a = ap.parse_args()
@@ -121,6 +124,9 @@ def main():
         X_tri, w_tri = triangulate(P, kp_det, sw)
     vid, px, ok = dense_targets(pred, rig)
     vid, px, ok = (torch.tensor(x, device=dev) for x in (vid, px, ok))
+    vm = torch.tensor([0.0 if a.views == "side" else 1.0, 0.0 if a.views == "front" else 1.0], device=dev)      # per-panel weight
+    sw = sw * vm[None, :, None]; ok = ok * vm[None, :, None]
+    if a.views != "both": print(f"VIEWS only the {a.views} panel is used", flush=True)
     foot = torch.tensor([rig.kp_names.index(n) for n in cfg["foot_keypoints"] if n in rig.kp_names], device=dev, dtype=torch.long)
     lr = cams["panels"]["side"].get("panel_x0", 0) > 0                 # panels left/right instead of stacked
     H_src = float(pred["src_size"][1])
@@ -134,8 +140,14 @@ def main():
     la = torch.zeros(T, device=dev, requires_grad=True)                # front panel log-scale
     dy = torch.zeros(T, device=dev, requires_grad=True)                # front panel vertical shift (px)
     free = rig.free[None, :, None].float()
+    pole = rig.pole if a.mode != "triangulate" else None
+    prv = torch.zeros(T, 3, device=dev, requires_grad=True)             # pole body: rotation vector + bottom point, armature space
+    pbl = torch.zeros(T, 3, device=dev, requires_grad=True)
+    kmask = torch.ones(len(rig.kp_names), device=dev)
+    pole_free, pole_start = False, max(1, a.iters // 2)                # first half: body only, pole follows the hands
+    if pole: kmask[pole["kp"]] = 0.0
     opt = torch.optim.Adam([{"params": [e, rot], "lr": 0.02}, {"params": [loc], "lr": 0.01},
-                            {"params": [la], "lr": 0.003}, {"params": [dy], "lr": 0.5}])
+                            {"params": [la], "lr": 0.003}, {"params": [dy], "lr": 0.5}, {"params": [prv, pbl], "lr": 0.01}])
 
     def project(X):                                                     # X (T,N,3) -> (T,V,N,2)
         Xh = torch.cat([X, torch.ones_like(X[..., :1])], -1)
@@ -145,12 +157,38 @@ def main():
         f = f + torch.stack([torch.zeros_like(dy), dy], -1)[:, None]
         return torch.stack([f, p[:, 1]], 1)
 
+    rig_len = float(cfg["pole"]["length"]) if pole else 0.0
     total = a.iters + a.dense_iters
     t0 = time.time()
     for it in range(total):
         use_dense = it >= a.iters
         E = e * free
-        G = rig.fk(E, rot, loc)
+        A_obj = rig.obj_matrix(rot, loc)
+        if pole is None:
+            G = rig.fk(E, rot, loc)
+        else:
+            if it == pole_start:                                        # hand-over: per frame pick the pole end that matches the detections
+                with torch.no_grad():
+                    G0 = rig.fk(E, rot, loc); errs = []
+                    for sg in (1.0, -1.0):
+                        pA = rig.pole_rule(G0, A_obj, torch.full((T,), sg, device=dev))
+                        k2 = project(rig.keypoints(rig.fk(E, rot, loc, pole_A=pA))[:, pole["kp"]])
+                        errs.append((k2 - kp_det[:, :, pole["kp"]]).norm(dim=-1).sum((1, 2)))
+                    diff = (errs[0] - errs[1]).cpu().numpy()
+                    diff = np.convolve(np.pad(diff, 2, mode="edge"), np.ones(5) / 5, mode="valid")        # tip flips are not frame-to-frame noise
+                    sgn = torch.tensor(np.where(diff <= 0, 1.0, -1.0), device=dev, dtype=torch.float32)
+                    pA = rig.pole_rule(G0, A_obj, sgn)
+                    R0 = pA[:, :3, :3]
+                    prv.data = torch.tensor(Rotation.from_matrix(R0.cpu().numpy()).as_rotvec(), device=dev, dtype=torch.float32)
+                    pbl.data = pA[:, :3, 3] + (R0 @ pole["B0"][:, None])[..., 0]
+                    kmask[pole["kp"]] = 1.0; pole_free = True
+                    print(f"POLE start: {int((sgn < 0).sum())}/{T} frames with the tip toward the left hand", flush=True)
+            if pole_free:
+                pA = rig.pole_matrix(rotvec_to_matrix(prv), pbl)
+            else:
+                with torch.no_grad():
+                    pA = rig.pole_rule(rig.fk(E, rot, loc), A_obj, torch.ones(T, device=dev))
+            G = rig.fk(E, rot, loc, pole_A=pA)
         K3 = rig.keypoints(G)
         kp2 = project(K3)
         d_kp = (kp2 - kp_det).norm(dim=-1)
@@ -158,7 +196,8 @@ def main():
             d3 = (K3 - X_tri).norm(dim=-1) * 150
             L_kp = (rho(d3, 4.0) * w_tri).sum() / w_tri.sum()
         else:
-            L_kp = (rho(d_kp, 4.0) * sw).sum() / sw.sum()
+            swm = sw * kmask
+            L_kp = (rho(d_kp, 4.0) * swm).sum() / swm.sum()
         L = L_kp
         L_dense = torch.zeros((), device=dev)
         if use_dense:
@@ -178,6 +217,13 @@ def main():
         fz = K3[:, foot, 2]
         L_floor = 200 * (-fz).clamp(min=0).pow(2).sum(1).mean() if len(foot) else torch.zeros((), device=dev)
         L = L + L_lim + L_reg + L_sm + L_front + L_floor
+        if pole is not None and pole_free:                              # both hands grip the pole: grips lie on its axis, inside its length
+            gA = rig.pole_grips(G, A_obj)
+            tip = (rotvec_to_matrix(prv) @ pole["u0"][:, None])[..., 0]
+            vv = gA - pbl[:, None]; along = (vv * tip[:, None]).sum(-1)
+            perp = (vv - along[..., None] * tip[:, None]).norm(dim=-1)
+            L_grip = rho(perp * 150, 4.0).mean() + 50 * ((-along).clamp(min=0) ** 2 + (along - rig_len).clamp(min=0) ** 2).mean()
+            L = L + L_grip + 5 * (second_diff(prv).pow(2).sum(1).mean() + 10 * second_diff(pbl).pow(2).sum(1).mean())
         opt.zero_grad(); L.backward(); opt.step()
         if it % 50 == 0 or it == total - 1:
             print(f"PROGRESS {it + 1}/{total}", flush=True)
@@ -191,10 +237,13 @@ def main():
                                    device=dev, dtype=torch.float32)
         e, rot, loc = f(e * free), f(rot), f(loc)
         E = rig.full_euler(e * free)
-        G = rig.fk(e * free, rot, loc); kp2 = project(rig.keypoints(G))
+        pA = None
+        if pole is not None:
+            prv, pbl = f(prv), f(pbl); pA = rig.pole_matrix(rotvec_to_matrix(prv), pbl)
+        G = rig.fk(e * free, rot, loc, pole_A=pA); kp2 = project(rig.keypoints(G))
         res = (kp2 - kp_det).norm(dim=-1)
     np.savez(f"{a.out}/fit.npz", euler=E.cpu().numpy(), obj_rot=rot.detach().cpu().numpy(), obj_loc=loc.detach().cpu().numpy(),
-             front_scale=la.exp().detach().cpu().numpy(), front_dy=dy.detach().cpu().numpy(), names=np.array(rig.names),
+             front_scale=la.exp().detach().cpu().numpy(), pole_A=(pA.cpu().numpy() if pA is not None else np.zeros((0, 4, 4))), front_dy=dy.detach().cpu().numpy(), names=np.array(rig.names),
              kp2d_fit=kp2.cpu().numpy(), kp_res=res.cpu().numpy())
     print("RES px median front %.1f side %.1f | mean front %.1f side %.1f" % (
         res[:, 0].median(), res[:, 1].median(), res[:, 0].mean(), res[:, 1].mean()))

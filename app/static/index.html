@@ -212,7 +212,10 @@ a.vshot{cursor:pointer}
 .vshot .prog{position:absolute;left:0;right:0;bottom:0;padding:16px;background:linear-gradient(transparent,rgba(27,25,21,.55));color:#fff;font:700 15px/1 var(--text)}
 .vshot .prog .t{height:6px;border-radius:99px;background:rgba(255,255,255,.3);margin-top:10px;overflow:hidden}
 .vshot .prog .t i{display:block;height:100%;background:#fff;border-radius:99px;transition:width .6s}
-.vcard .info{display:flex;align-items:center;gap:14px;padding:16px 18px 18px 22px}
+.vcard .info{display:flex;align-items:center;flex-wrap:wrap;gap:10px 12px;padding:16px 18px 18px 22px}
+.vcard .info .nm{flex:1 1 auto;min-width:0}
+.vcard .info .acts{display:flex;align-items:center;flex-wrap:wrap;gap:8px;flex:1 1 100%;justify-content:flex-end}
+.vcard .info .acts .vsel{flex:1 1 auto;min-width:0;max-width:100%}
 .vcard .name{font:700 22px/1.2 var(--disp);letter-spacing:-.01em;overflow-wrap:anywhere}
 .vcard .meta{font-size:14px;color:var(--mut);font-weight:600;margin-top:2px}
 .vcard .info .sp{flex:1}
@@ -261,6 +264,8 @@ a.vshot{cursor:pointer}
 .sheet h3{font:700 16px/1.2 var(--disp);margin:26px 0 10px}
 .kv{display:grid;grid-template-columns:auto 1fr;gap:6px 18px;background:var(--paper);border-radius:18px;padding:16px 18px;box-shadow:inset 0 0 0 1px var(--line);font-size:14px}
 .kv dt{color:var(--mut);font-weight:600}.kv dd{margin:0;font-weight:600;overflow-wrap:anywhere}
+.adj{display:grid;gap:6px;margin:4px 0 14px}.adj label{display:flex;gap:10px;align-items:center;font-size:13px}.adj label span{width:52px}.adj input{flex:1}.pv .img{transform-origin:50% 50%}
+.faces{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:8px 0}.face{padding:0;border:2px solid transparent;border-radius:10px;overflow:hidden;background:none;cursor:pointer}.face img{display:block;width:100%}.face.on{border-color:var(--accent,#2f6df6)}
 .warn{background:#FBF1DC;color:var(--warn);border-radius:14px;padding:12px 14px;font-size:13px;font-weight:600;margin-top:10px}
 .warn.err{background:var(--err-t);color:var(--err)}
 textarea.code{width:100%;min-height:340px;border:0;border-radius:16px;padding:14px;background:var(--paper);box-shadow:inset 0 0 0 1.5px var(--line);font:12.5px/1.5 var(--mono);resize:vertical}
@@ -313,6 +318,7 @@ const TX={
   promptLab:"SEEDANCE 提示词",copy:"复制",copied:"已复制",dlFrame:"下载首帧图",
   prompt:"{0}两个画面需要完全同步。拍摄角度完全固定，不要缩放，背景和地面不变。",
   trainDone:"训练完成",framePrompt:"首帧图与提示词",actions:"动作",dropVid:"拖入生成好的视频",dropVidS:"可以一次拖多个",
+  vsBoth:"两个画面",fitMore:"再拟合",vsOnly:"只用{0}画面（{1}）",vsPos:{lr:["左边","右边"],tb:["上面","下面"]},
   done:"完成",notFit:"未拟合",fitFail:"失败",startFit:"开始拟合",busy:"处理中…",retry:"重试",dlFbx:"下载 FBX",dlBlend:"下载 .blend",
   sec:"{0} 秒",frames:"{0} 帧",src:"原视频",res:"拟合结果",close:"关闭",
   stg:["识别中","拟合中","生成对比视频","生成对比视频","导出中","导出中"],
@@ -321,6 +327,8 @@ const TX={
   noBlender:"没找到 Blender",noBlenderSub:"每一步都需要 Blender，请在设置里填写 blender.exe 的路径。",openSet:"打开设置",
   settings:"设置",blenderPath:"Blender 路径（blender.exe）",save:"保存",saved:"已保存",examples:"从示例创建",exName:"新角色名字（字母、数字、_ 或 -）",
   rig:"骨架",mesh:"网格",verts:"顶点",bones:"骨骼",kps:"关键点",accuracy:"识别精度（训练图）",pxMed:"中位误差 {0} px",cfg:"骨骼配置（JSON）",
+  frameAdj:"取景微调",zoom:"缩放",shift:"上下",adjReset:"重置",adjHint:"拖动滑块预览，点「生成首帧图」后按新取景重新渲染。",
+  faceT:"角色朝哪边",faceH:"点一下角色正面朝向镜头的那张图（不依赖模型在 Blender 里的朝向）。",faceGen:"生成朝向预览",faceSet:"已设置朝向 {0}°，首帧图要重新生成才会按新朝向",
   cfgHint:"关键点、关节限制、朝向。改完保存即可。",delChar:"删除这个角色",delConfirm:"删除角色“{0}”和它的全部文件？",delVid:"删除这段视频？",
   details:"详情",dismiss:"知道了",cancel:"取消",logTitle:"任务详情",left:"还剩 {0} 分钟",uploading:"正在上传 {0}…",
   dropModel:"松手导入角色",dropVideo:"松手添加视频",needChar:"先打开一个训练好的角色，再拖入视频",notReady:"这个角色还没训练好，先完成训练",
@@ -341,6 +349,7 @@ const TX={
   promptLab:"SEEDANCE PROMPT",copy:"Copy",copied:"Copied",dlFrame:"Download start frame",
   prompt:"The {0} panels must stay perfectly in sync. Camera angles fixed, no zoom, background and floor unchanged.",
   trainDone:"Trained",framePrompt:"Start frame & prompt",actions:"Actions",dropVid:"Drop generated videos",dropVidS:"Several at once is fine",
+  vsBoth:"Both panels",fitMore:"Fit again",vsOnly:"{0} panel only ({1})",vsPos:{lr:["Left","Right"],tb:["Top","Bottom"]},
   done:"Done",notFit:"Not fitted",fitFail:"Failed",startFit:"Start fitting",busy:"Working…",retry:"Retry",dlFbx:"Download FBX",dlBlend:"Download .blend",
   sec:"{0} s",frames:"{0} frames",src:"Video",res:"Fit",close:"Close",
   stg:["Detecting","Fitting","Making preview","Making preview","Exporting","Exporting"],
@@ -349,6 +358,8 @@ const TX={
   noBlender:"Blender not found",noBlenderSub:"Every step needs Blender. Set the path to blender.exe in Settings.",openSet:"Open settings",
   settings:"Settings",blenderPath:"Blender path (blender.exe)",save:"Save",saved:"Saved",examples:"Start from an example",exName:"Name for the new character (letters, digits, _ or -)",
   rig:"Armature",mesh:"Mesh",verts:"Vertices",bones:"Bones",kps:"Keypoints",accuracy:"Detector accuracy (training images)",pxMed:"median error {0} px",cfg:"Bone config (JSON)",
+  frameAdj:"Framing",zoom:"Zoom",shift:"Up / down",adjReset:"Reset",adjHint:"Drag to preview; “Generate start frame” re-renders with the new framing.",
+  faceT:"Which way does the character face?",faceH:"Click the view in which the character faces the camera (independent of how the model is oriented in Blender).",faceGen:"Generate facing views",faceSet:"Facing set to {0}°. Regenerate the start frame to use it.",
   cfgHint:"Keypoints, joint limits, orientation. Save when done.",delChar:"Delete this character",delConfirm:"Delete “{0}” and all its files?",delVid:"Delete this video?",
   details:"Details",dismiss:"OK",cancel:"Cancel",logTitle:"Job details",left:"{0} min left",uploading:"Uploading {0}…",
   dropModel:"Drop to import the character",dropVideo:"Drop to add videos",needChar:"Open a trained character first, then drop videos",notReady:"This character is not trained yet",
@@ -474,6 +485,8 @@ function stepsHTML(S,view){
   return `<div class="steps">${st(s1,1,t("s1"),s1==="done"?optText(o):t("s1sub"),s1==="done"&&view!=="training"?base+"/setup":"")}
     ${st(s2,2,t("s2"),sub2,"")}${st(S.model&&view==="actions"?"on":"wait",3,t("s3"),S.videos.length?t("s3n",S.videos.length):t("s3sub"),S.model&&view!=="training"?base:"")}</div>`;
 }
+const vsel={},FITV=["both","front","side"];
+document.addEventListener("change",e=>{if(e.target.classList?.contains("vsel"))vsel[e.target.dataset.v]=e.target.value});
 function frameImg(S){return `/files/${encodeURIComponent(S.name)}/start_frame/start_frame.png?v=${S.start_mtime||0}`}
 function promptHTML(S){
   const lay=S.start_options?.layout||"tb";
@@ -497,6 +510,11 @@ function setupHTML(S){
         ${["tb","lr"].map(v=>tile("layout",v,`${I.lay[v]}${t("L")[v]}`,o.layout===v)).join("")}</div></div>
       <div class="og"><h3>${t("ratio")}</h3><div class="tiles c4">
         ${Object.keys(RATIOBOX).map(r=>tile("ratio",r,`<span class="ratio" style="width:${RATIOBOX[r][0]}px;height:${RATIOBOX[r][1]}px"></span>${r}`,o.ratio===r)).join("")}</div></div>
+      <div class="og"><h3>${t("frameAdj")} <button class="btn soft sm" data-act="adjReset">${t("adjReset")}</button></h3><div class="mut" style="font-size:12px;margin:-6px 0 8px">${t("adjHint")}</div>
+        ${(()=>{const a=(o.adjust||(o.adjust={})).front||(o.adjust.front={zoom:1,dy:0});
+          return `<div class="adj">
+          <label><span>${t("zoom")}</span><input type="range" class="adjr" data-f="zoom" min="0.4" max="3" step="0.05" value="${a.zoom}"></label>
+          <label><span>${t("shift")}</span><input type="range" class="adjr" data-f="dy" min="-0.4" max="0.4" step="0.01" value="${a.dy}"></label></div>`})()}</div>
       ${S.model?`<div class="tip" style="margin:0 0 22px">${I.info}<span>${t("retrainNote")}</span></div>`:""}
       ${fail?`<div class="tip err" style="margin:0 0 22px">${I.warn}<span>${esc(S.last_job.error)}</span></div>`:""}
       <button class="btn k big wide" data-act="genFrame" ${run?"disabled":""}>${run?t("genning",pct(j)):t("genFrame")}</button>
@@ -513,8 +531,16 @@ function pv(S){
   if(cur){const b=`/files/${encodeURIComponent(S.name)}/start_frame/`,q=`?v=${S.start_mtime||0}`;src[cur[0]]=b+"panel_front.png"+q;src[cur[1]]=b+"panel_side.png"+q}
   const v=o.views.split("");
   box.innerHTML=v.map(k=>`<div>${src[k]?`<div class="img" style="background-image:url('${src[k]}')"></div>`:`<div class="ico">${k==="t"?`<svg width="56" height="56" viewBox="0 0 50 52">${body}${topCam}</svg>`:`<svg width="56" height="56" viewBox="0 0 50 52">${body}${k==="f"?cam(25,48,-90):cam(46,27,180)}</svg>`}</div>`}<span>${t("V")[k]}</span></div>`).join("");
-  $("#pvcap").textContent=optText(o);
+  $("#pvcap").textContent=optText(o);applyAdjust(S);
 }
+function applyAdjust(S){
+  const o=opts[S.name]||{};
+  document.querySelectorAll("#pv > div").forEach((c,i)=>{const k=i?"side":"front",a=(o.adjust||{})[k]||{zoom:1,dy:0},
+      r=((S.start_options||{}).adjust||{})[k]||{zoom:1,dy:0},im=c.querySelector(".img");      // the shown image was rendered with r: apply only the change
+    if(im){const z=(a.zoom||1)/(r.zoom||1),ty=z*(r.dy||0)-(a.dy||0);c.style.overflow="hidden";im.style.transform=`translateY(${ty*100}%) scale(${z})`}})
+}
+document.addEventListener("input",e=>{const el=e.target;if(!el.classList?.contains("adjr"))return;
+  const S=P(parseRoute().p);if(!S)return;const o=opts[S.name];const v={...((o.adjust||{}).front||{zoom:1,dy:0}),[el.dataset.f]:+el.value};o.adjust={front:v,side:{...v}};applyAdjust(S)});
 
 function trainHTML(S){
   const q=qsel[S.name]||S.quality||"std",j=S.last_job;
@@ -552,23 +578,33 @@ function frameHTML(S){
     <div>${promptHTML(S)}<div class="tip">${I.info}<span>${esc(optText(S.start_options))}</span></div>
       <div class="row" style="margin-top:18px"><a class="btn line sm" href="#/p/${encodeURIComponent(S.name)}/setup">${t("reframe")}</a></div></div></div>`;
 }
+const fsel={};
+const fitLabel=(S,k)=>k==="both"?t("vsBoth"):t("vsOnly",t("vsPos")[S.start_options?.layout||"tb"][k==="front"?0:1],t("V")[(S.start_options?.views||"fs")[k==="front"?0:1]]);
+const curFit=v=>{const ok=(v.fits||[]).filter(f=>f.compare&&f.fbx);return ok.find(f=>f.views===fsel[v.id])||ok[0]};
+const fitUrl=(S,v,k)=>`/files/${encodeURIComponent(S.name)}/videos/${encodeURIComponent(v.id)}/fit_${k}/`;
+const fitSelect=(S,v,left)=>left.length?`<select class="field vsel" data-v="${esc(v.id)}" style="width:auto;padding:6px 8px;font-size:13px">${left.map(k=>`<option value="${k}"${(vsel[v.id]||left[0])===k?" selected":""}>${fitLabel(S,k)}</option>`).join("")}</select>`:"";
 function vcardHTML(S,v){
   const j=v.job,run=active(j),fail=!run&&j&&j.status==="error",base=`#/p/${encodeURIComponent(S.name)}`;
   const thumb=`<img src="/api/projects/${encodeURIComponent(S.name)}/videos/${encodeURIComponent(v.id)}/thumb.jpg" alt="" loading="lazy">`;
   const stg=j?(t("stg")[j.stage_index]||t("stg")[1]):"";
-  let shot,btn;
+  let shot,btn,chips="";
   if(run){
     shot=`<div class="vshot">${thumb}<div class="prog">${j.status==="queued"?t("queued"):`${stg} · ${pct(j)}%`}<div class="t"><i style="width:${Math.max(2,pct(j))}%"></i></div></div></div>`;
     btn=`<button class="btn line sm" disabled>${t("busy")}</button>`;
-  }else if(v.fbx&&v.compare){
+  }else if(curFit(v)){
+    const cf=curFit(v),used=(v.fits||[]).map(f=>f.views),left=FITV.filter(k=>!used.includes(k)),many=(v.fits||[]).filter(f=>f.compare&&f.fbx);
     shot=`<a class="vshot" href="${base}/play/${encodeURIComponent(v.id)}">${thumb}<span class="badge ok">${I.check}${t("done")}</span><span class="play"><i>${I.play}</i></span></a>`;
-    btn=`<a class="btn k sm" href="/files/${encodeURIComponent(S.name)}/videos/${encodeURIComponent(v.id)}/fit/mocap.fbx" download="${esc(S.name)}_${esc(v.id)}.fbx">${I.dl(16)}${t("dlFbx")}</a>`;
+    btn=`${left.length?`${fitSelect(S,v,left)}<button class="btn line sm" data-act="process" data-v="${esc(v.id)}">${t("fitMore")}</button>`:""}
+      <a class="btn k sm" href="${fitUrl(S,v,cf.views)}mocap.fbx" download="${esc(S.name)}_${esc(v.id)}_${cf.views}.fbx">${I.dl(16)}${t("dlFbx")}</a>`;
+    chips=many.length>1?`<div class="row" style="gap:6px;padding:0 16px 12px;flex-wrap:wrap">${many.map(f=>`<button class="btn sm ${f.views===cf.views?"k":"line"}" data-act="selFit" data-v="${esc(v.id)}" data-k="${f.views}">${fitLabel(S,f.views)}</button>`).join("")}</div>`:"";
   }else{
     shot=`<div class="vshot">${thumb}<span class="badge${fail?" bad":""}">${fail?t("fitFail"):t("notFit")}</span></div>`;
-    btn=`<button class="btn k sm" data-act="process" data-v="${esc(v.id)}">${fail?t("retry"):t("startFit")}</button>`;
+    const left=FITV.filter(k=>!(v.fits||[]).some(f=>f.views===k&&f.compare&&f.fbx));
+    btn=`${fitSelect(S,v,left)}
+      <button class="btn k sm" data-act="process" data-v="${esc(v.id)}">${fail?t("retry"):t("startFit")}</button>`;
   }
   return `<div class="vcard">${shot}${run?"":`<button class="del" data-act="delVid" data-v="${esc(v.id)}" aria-label="delete">${I.xs}</button>`}
-    <div class="info"><div><div class="name">${esc(v.id)}</div><div class="meta">${t("sec",Math.round(v.duration||0))}</div></div><span class="sp"></span>${btn}</div></div>`;
+    <div class="info"><div class="nm"><div class="name">${esc(v.id)}</div><div class="meta">${t("sec",Math.round(v.duration||0))}</div></div><div class="acts">${btn}</div></div>${chips}</div>`;
 }
 function actionsHTML(S){
   const base=`#/p/${encodeURIComponent(S.name)}`;
@@ -611,14 +647,15 @@ function charHTML(S,r){
 function renderLB(r){
   const host=$("#lbHost"),S=r.v==="char"&&P(r.p),v=S&&r.vid&&S.videos.find(x=>x.id===r.vid);
   if(!v||!v.compare){if(host.innerHTML){host.innerHTML="";host.dataset.key="";document.body.style.overflow=""}return}
-  const key=`${S.name}/${v.id}/${v.compare_mtime}/${lang}`;if(host.dataset.key===key)return;host.dataset.key=key;
-  const f=`/files/${encodeURIComponent(S.name)}/videos/${encodeURIComponent(v.id)}/fit/`;
+  const cf=curFit(v);if(!cf){host.innerHTML="";return}
+  const key=`${S.name}/${v.id}/${cf.views}/${cf.compare_mtime}/${lang}`;if(host.dataset.key===key)return;host.dataset.key=key;
+  const f=fitUrl(S,v,cf.views),many=(v.fits||[]).filter(x=>x.compare&&x.fbx);
   host.innerHTML=`<div class="lb" data-act="lbBack"><button class="x" data-act="lbClose" aria-label="${t("close")}">${I.x}</button>
-    <div class="vbox"><video muted loop autoplay playsinline preload="auto" src="${f}compare.mp4?v=${v.compare_mtime||0}"></video>
+    <div class="vbox"><video muted loop autoplay playsinline preload="auto" src="${f}compare.mp4?v=${cf.compare_mtime||0}"></video>
       <span class="lab" style="left:14px">${t("src")}</span><span class="lab" style="left:calc(50% + 14px)">${t("res")}</span></div>
-    <div class="bot"><div><div class="name">${esc(v.id)}</div><div class="meta">${esc(S.name)} · ${t("sec",Math.round(v.duration||0))} · ${t("frames",v.frames||0)}</div></div><span class="sp"></span>
-      ${v.blend?`<a class="btn onDark" href="${f}mocap.blend" download="${esc(S.name)}_${esc(v.id)}.blend">${t("dlBlend")}</a>`:""}
-      ${v.fbx?`<a class="btn k" href="${f}mocap.fbx" download="${esc(S.name)}_${esc(v.id)}.fbx">${I.dl(18)}${t("dlFbx")}</a>`:""}</div></div>`;
+    <div class="bot"><div><div class="name">${esc(v.id)}</div><div class="meta">${esc(S.name)} · ${t("sec",Math.round(v.duration||0))} · ${t("frames",v.frames||0)}</div></div><span class="sp"></span>${many.length>1?many.map(x=>`<button class="btn sm ${x.views===cf.views?"k":"onDark"}" data-act="selFit" data-v="${esc(v.id)}" data-k="${x.views}">${fitLabel(S,x.views)}</button>`).join(""):""}
+      ${cf.blend?`<a class="btn onDark" href="${f}mocap.blend" download="${esc(S.name)}_${esc(v.id)}_${cf.views}.blend">${t("dlBlend")}</a>`:""}
+      ${cf.fbx?`<a class="btn k" href="${f}mocap.fbx" download="${esc(S.name)}_${esc(v.id)}_${cf.views}.fbx">${I.dl(18)}${t("dlFbx")}</a>`:""}</div></div>`;
   document.body.style.overflow="hidden";
   host.querySelector("video").play().catch(()=>{});
 }
@@ -707,10 +744,16 @@ async function openInfo(){
   const w=[S.config_error,...(S.config_warnings||[])].filter(Boolean);
   sheet(t("info").replace(" ›",""),`${kv.length?`<dl class="kv">${kv.map(([k,v])=>`<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join("")}</dl>`:""}
     ${w.map(x=>`<div class="warn${x===S.config_error?" err":""}">${esc(x)}</div>`).join("")}
+    ${S.prepped?`<h3>${t("faceT")}</h3><div class="mut" style="font-size:13px;margin:-4px 0 6px">${t("faceH")}</div>
+    ${S.orient_views?`<div class="faces">${[0,45,90,135,180,225,270,315].map(a=>`<button class="face" data-act="setFace" data-az="${a}"><img alt="${a}°" src="/files/${encodeURIComponent(S.name)}/rig/orient/az_${String(a).padStart(3,"0")}.jpg"></button>`).join("")}</div>`:`<button class="btn line sm" data-act="genFace">${t("faceGen")}</button>`}<div id="faceMsg" class="mut"></div>`:""}
     ${S.config?`<h3>${t("cfg")}</h3><div class="mut" style="font-size:13px;margin:-4px 0 10px">${t("cfgHint")}</div>
     <textarea class="code" id="cfgText" spellcheck="false"></textarea><div class="row" style="margin-top:12px"><button class="btn k sm" data-act="saveCfg">${t("save")}</button><span id="cfgMsg" class="mut"></span></div>`:""}
     <h3>&nbsp;</h3><div class="row"><button class="btn line sm" data-act="reimport">${t("reimport")}</button><button class="btn line sm danger" data-act="delChar">${t("delChar")}</button></div>`);
-  if(S.config){try{$("#cfgText").value=(await api(`/api/projects/${encodeURIComponent(S.name)}/config`)).text}catch(e){}}
+  if(S.config){try{$("#cfgText").value=(await api(`/api/projects/${encodeURIComponent(S.name)}/config`)).text;markFace()}catch(e){}}
+}
+function markFace(){
+  let f=null;try{const c=JSON.parse($("#cfgText").value);if(c.orientation_confirmed&&typeof c.orientation.forward==="number")f=((Math.round(c.orientation.forward)%360)+360)%360}catch(e){}
+  document.querySelectorAll(".face").forEach(b=>b.classList.toggle("on",+b.dataset.az===f))
 }
 function openSettings(){
   sheet(t("settings"),`<label class="mut" style="font-weight:600;font-size:14px">${t("blenderPath")}<input class="field" id="blenderIn" value="${esc(settings?.blender||"")}" spellcheck="false"></label>
@@ -758,9 +801,15 @@ document.addEventListener("click",async e=>{
       const n=+($("#advN")?.value||0),s=+($("#advS")?.value||0);
       if($(".adv")?.open){if(n&&n!==presets?.[q]?.samples)b.samples=n;if(s&&s!==presets?.[q]?.steps)b.steps=s}
       el.disabled=true;guard(async()=>{await send(`/api/projects/${encodeURIComponent(S.name)}/run/build`,b);go(`#/p/${encodeURIComponent(S.name)}`)});break}
-    case"process":el.disabled=true;guard(()=>send(`/api/projects/${encodeURIComponent(S.name)}/videos/${encodeURIComponent(el.dataset.v)}/run/process`));break;
+    case"selFit":fsel[el.dataset.v]=el.dataset.k;render();break;
+    case"process":el.disabled=true;guard(()=>send(`/api/projects/${encodeURIComponent(S.name)}/videos/${encodeURIComponent(el.dataset.v)}/run/process`,{views:vsel[el.dataset.v]||(()=>{const v=S.videos.find(x=>x.id===el.dataset.v);const used=(v?.fits||[]).filter(f=>f.compare&&f.fbx).map(f=>f.views);return FITV.find(k=>!used.includes(k))||"both"})()}));break;
     case"delVid":if(confirm(t("delVid")))guard(()=>api(`/api/projects/${encodeURIComponent(S.name)}/videos/${encodeURIComponent(el.dataset.v)}`,{method:"DELETE"}));break;
     case"delChar":if(confirm(t("delConfirm",S.name)))guard(async()=>{await api(`/api/projects/${encodeURIComponent(S.name)}`,{method:"DELETE"});closeSheet();go("#/")});break;
+    case"setFace":{const az=+el.dataset.az;guard(async()=>{const ta=$("#cfgText");if(!ta)return;let c=JSON.parse(ta.value);
+      c.orientation={forward:az,left:"auto"};c.orientation_confirmed=true;ta.value=JSON.stringify(c,null,1);
+      await send(`/api/projects/${encodeURIComponent(S.name)}/config`,{text:ta.value},"PUT");markFace();$("#faceMsg").textContent=t("faceSet",az)});break}
+    case"adjReset":{const o=opts[S.name];o.adjust={front:{zoom:1,dy:0},side:{zoom:1,dy:0}};render();break}
+    case"genFace":el.disabled=true;guard(async()=>{await send(`/api/projects/${encodeURIComponent(S.name)}/run/orient`);closeSheet()});break;
     case"saveCfg":guard(async()=>{const w=await send(`/api/projects/${encodeURIComponent(S.name)}/config`,{text:$("#cfgText").value},"PUT");
       $("#cfgMsg").textContent=t("saved")+((w.warnings||[]).length?" · "+w.warnings.join(" · "):"")});break;
     case"saveSet":guard(async()=>{settings=await send("/api/settings",{blender:$("#blenderIn").value});$("#setMsg").textContent=t("saved")});break;

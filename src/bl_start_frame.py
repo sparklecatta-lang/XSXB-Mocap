@@ -1,10 +1,13 @@
 """Start frame for the video model: top = front view, bottom = left-side view, same ortho scale.
+The two panel slots keep the names "front" (top) and "side" (bottom); start_frame.views can point each slot's
+camera elsewhere, e.g. [{"az_deg": "side"}, {"az_deg": "side", "tilt_deg": 90}] = side view over a top view.
+start_frame.mid_air = true leaves the body where it is (no floor, no floor shadow), for flying rigs.
 blender -b <project>/rig/clean.blend --python src/bl_start_frame.py -- PROJECT
 Writes start_frame/panel_front.png, panel_side.png, start_frame.png (stacked) and cameras.json
 (3x4 projection matrices in full-image pixels, top-left origin).
 """
 import bpy, sys, math, json, os, numpy as np
-from mathutils import Vector, Euler
+from mathutils import Vector, Euler, Matrix
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import qconfig as Q
@@ -18,26 +21,28 @@ os.makedirs(OUT, exist_ok=True)
 sc = bpy.context.scene
 arm = bpy.data.objects[cfg["armature"]]; me = bpy.data.objects[cfg["mesh"]]
 
-# feet on the floor
+# feet on the floor (or left in mid-air)
+MID_AIR = bool(sf.get("mid_air"))
 dg = bpy.context.evaluated_depsgraph_get()
 ev = me.evaluated_get(dg); mm = ev.to_mesh()
 co = np.array([me.matrix_world @ v.co for v in mm.vertices]); ev.to_mesh_clear()
-zmin = co[:, 2].min(); arm.location.z -= zmin
+zmin = 0.0 if MID_AIR else co[:, 2].min(); arm.location.z -= zmin
 ctr = (co.min(0) + co.max(0)) / 2; ctr[2] -= zmin
 ext = co.max(0) - co.min(0)
 ORTHO_W = float(sf["ortho_width_m"] or max(2.0 * max(ext[0], ext[1]),  # body length ~ half the panel width
                                            1.4 * max(ext[2], min(ext[0], ext[1])) * W / H))   # wide panels: keep height room
-AIM_Z = float(sf["aim_height_m"] or 0.4865 * ext[2])
+AIM_Z = float(sf["aim_height_m"] or (ctr[2] if MID_AIR else 0.4865 * ext[2]))
 bpy.context.view_layer.update()
 
 # floor (shadow) + backdrop colour
 bg_col = (0.62, 0.62, 0.62)
-bpy.ops.mesh.primitive_plane_add(size=40 * ORTHO_W / 3, location=(0, 0, 0))
-floor = bpy.context.active_object
-fm = bpy.data.materials.new("Floor"); fm.use_nodes = True
-bsdf = next(n for n in fm.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
-bsdf.inputs["Base Color"].default_value = (*bg_col, 1); bsdf.inputs["Roughness"].default_value = 0.9
-floor.data.materials.append(fm)
+if not MID_AIR:
+    bpy.ops.mesh.primitive_plane_add(size=40 * ORTHO_W / 3, location=(0, 0, 0))
+    floor = bpy.context.active_object
+    fm = bpy.data.materials.new("Floor"); fm.use_nodes = True
+    bsdf = next(n for n in fm.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
+    bsdf.inputs["Base Color"].default_value = (*bg_col, 1); bsdf.inputs["Roughness"].default_value = 0.9
+    floor.data.materials.append(fm)
 world = sc.world or bpy.data.worlds.new("W"); sc.world = world; world.use_nodes = True
 bgn = next(n for n in world.node_tree.nodes if n.type == 'BACKGROUND')
 bgn.inputs[0].default_value = (*bg_col, 1); bgn.inputs[1].default_value = 0.9
@@ -59,23 +64,40 @@ cam_d.type = 'ORTHO'; cam_d.ortho_scale = ORTHO_W; cam_d.sensor_fit = 'HORIZONTA
 cam_d.clip_end = 100 * ORTHO_W / 3
 
 
-def place(az_deg):
-    t = math.radians(TILT); a = math.radians(az_deg)
-    d = Vector((math.cos(t) * math.cos(a), math.cos(t) * math.sin(a), math.sin(t)))
-    tgt = Vector((ctr[0], ctr[1], AIM_Z))
+ADJ = sf.get("adjust") or {}                             # per panel: {"zoom": >0 (1 = default), "dy": subject shift up as a fraction of panel height}
+
+
+def place(az_deg, tilt_deg=None, dy=0.0):
+    t = math.radians(TILT if tilt_deg is None else tilt_deg); a = math.radians(az_deg)
+    h = Vector((math.cos(a), math.sin(a), 0))
+    d = Vector((math.cos(t) * h.x, math.cos(t) * h.y, math.sin(t)))
+    f = -d                                       # look-at with world-up; straight down: image up = away from az
+    up = Vector((0, 0, 1)) if abs(d.z) < 0.999 else -h
+    r = f.cross(up).normalized(); u = r.cross(f)
+    tgt = Vector((ctr[0], ctr[1], AIM_Z)) - u * (dy * cam_d.ortho_scale * H / W)      # aim lower = subject higher in the image
     cam.location = tgt + d * 20 * ORTHO_W / 3
-    cam.rotation_euler = (-d).to_track_quat('-Z', 'Y').to_euler()
+    cam.rotation_euler = Matrix((r, u, -f)).transposed().to_euler()
     bpy.context.view_layer.update()
+
+
+def view_spec(i, default_az):
+    v = (sf.get("views") or [{}, {}])[i] or {}
+    az = v.get("az_deg")
+    az = default_az if az is None else {"front": AZ_F, "side": AZ_S}.get(az, az)
+    return float(az), v.get("tilt_deg")
 
 
 cams = {}
 for i, (name, az) in enumerate((("front", AZ_F), ("side", AZ_S))):
     xoff, yoff = (i * W, 0) if LR else (0, i * H)
-    place(az)
+    az, tilt = view_spec(i, az)
+    adj = ADJ.get(name) or {}
+    cam_d.ortho_scale = ORTHO_W / max(0.2, float(adj.get("zoom") or 1.0))
+    place(az, tilt, float(adj.get("dy") or 0.0))
     Pm = np.array(cam.calc_matrix_camera(bpy.context.evaluated_depsgraph_get(), x=W, y=H)) @ np.array(cam.matrix_world.inverted())
     Kp = np.array([[W / 2, 0, 0, W / 2 + xoff], [0, -H / 2, 0, H / 2 + yoff], [0, 0, 0, 1]])   # NDC -> stacked-image px
-    cams[name] = {"P_pixels": (Kp @ Pm).tolist(), "panel_y0": yoff, "panel_x0": xoff, "az_deg": az, "tilt_deg": TILT,
-                  "ortho_width_m": ORTHO_W, "location": list(cam.location), "rotation_euler": list(cam.rotation_euler)}
+    cams[name] = {"P_pixels": (Kp @ Pm).tolist(), "panel_y0": yoff, "panel_x0": xoff, "az_deg": az, "tilt_deg": TILT if tilt is None else float(tilt),
+                  "ortho_width_m": cam_d.ortho_scale, "location": list(cam.location), "rotation_euler": list(cam.rotation_euler)}
     sc.render.filepath = f"{OUT}/panel_{name}.png"
     bpy.ops.render.render(write_still=True)
     print(f"PROGRESS {i + 1}/2", flush=True)

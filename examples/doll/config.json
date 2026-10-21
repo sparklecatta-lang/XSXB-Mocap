@@ -1,0 +1,562 @@
+{
+ "name": "doll",
+ "armature": "ChaojiDoll_Transition_Rig",
+ "mesh": "Arm_L_Lower_GuideRail",
+ "orientation": {
+  "forward": 270,
+  "left": "auto"
+ },
+ "orientation_confirmed": true,
+ "side_tokens": [
+  "_L",
+  "_R"
+ ],
+ "keypoints": [
+  [
+   "pelvis",
+   "body",
+   "head"
+  ],
+  [
+   "spine_top",
+   "body",
+   "tail"
+  ],
+  [
+   "head_base",
+   "head",
+   "head"
+  ],
+  [
+   "head_top",
+   "head",
+   "tail"
+  ],
+  [
+   "l_shoulder",
+   "arm_L_upper",
+   "head"
+  ],
+  [
+   "l_elbow",
+   "arm_L_lower",
+   "head"
+  ],
+  [
+   "l_wrist",
+   "hand_L",
+   "head"
+  ],
+  [
+   "l_hand_tip",
+   "hand_L",
+   "tail"
+  ],
+  [
+   "l_hip",
+   "leg_L_upper",
+   "head"
+  ],
+  [
+   "l_knee",
+   "leg_L_lower",
+   "head"
+  ],
+  [
+   "l_ankle",
+   "foot_L",
+   "head"
+  ],
+  [
+   "l_toe",
+   "foot_L",
+   "tail"
+  ],
+  [
+   "r_shoulder",
+   "arm_R_upper",
+   "head"
+  ],
+  [
+   "r_elbow",
+   "arm_R_lower",
+   "head"
+  ],
+  [
+   "r_wrist",
+   "hand_R",
+   "head"
+  ],
+  [
+   "r_hand_tip",
+   "hand_R",
+   "tail"
+  ],
+  [
+   "r_hip",
+   "leg_R_upper",
+   "head"
+  ],
+  [
+   "r_knee",
+   "leg_R_lower",
+   "head"
+  ],
+  [
+   "r_ankle",
+   "foot_R",
+   "head"
+  ],
+  [
+   "r_toe",
+   "foot_R",
+   "tail"
+  ],
+  [
+   "pole_bottom",
+   "Fan_staff",
+   "head"
+  ],
+  [
+   "pole_top",
+   "Fan_staff",
+   "tail"
+  ]
+ ],
+ "skeleton": [
+  [
+   "pelvis",
+   "spine_top"
+  ],
+  [
+   "spine_top",
+   "head_base"
+  ],
+  [
+   "head_base",
+   "head_top"
+  ],
+  [
+   "pole_bottom",
+   "pole_top"
+  ],
+  [
+   "spine_top",
+   "l_shoulder"
+  ],
+  [
+   "l_shoulder",
+   "l_elbow"
+  ],
+  [
+   "l_elbow",
+   "l_wrist"
+  ],
+  [
+   "l_wrist",
+   "l_hand_tip"
+  ],
+  [
+   "pelvis",
+   "l_hip"
+  ],
+  [
+   "l_hip",
+   "l_knee"
+  ],
+  [
+   "l_knee",
+   "l_ankle"
+  ],
+  [
+   "l_ankle",
+   "l_toe"
+  ],
+  [
+   "spine_top",
+   "r_shoulder"
+  ],
+  [
+   "r_shoulder",
+   "r_elbow"
+  ],
+  [
+   "r_elbow",
+   "r_wrist"
+  ],
+  [
+   "r_wrist",
+   "r_hand_tip"
+  ],
+  [
+   "pelvis",
+   "r_hip"
+  ],
+  [
+   "r_hip",
+   "r_knee"
+  ],
+  [
+   "r_knee",
+   "r_ankle"
+  ],
+  [
+   "r_ankle",
+   "r_toe"
+  ]
+ ],
+ "foot_keypoints": [
+  "l_ankle",
+  "r_ankle",
+  "l_toe",
+  "r_toe"
+ ],
+ "default_limits": [
+  [
+   -45,
+   45
+  ],
+  [
+   -15,
+   15
+  ],
+  [
+   -25,
+   25
+  ]
+ ],
+ "joint_limits": [
+  {
+   "match": "^body$",
+   "limits": [
+    [
+     -130,
+     124
+    ],
+    [
+     -130,
+     130
+    ],
+    [
+     -130,
+     107
+    ]
+   ]
+  },
+  {
+   "match": "^neck_01$",
+   "limits": [
+    [
+     -96,
+     74
+    ],
+    [
+     -112,
+     104
+    ],
+    [
+     -73,
+     89
+    ]
+   ]
+  },
+  {
+   "match": "^head$",
+   "limits": [
+    [
+     -56,
+     73
+    ],
+    [
+     -130,
+     69
+    ],
+    [
+     -72,
+     72
+    ]
+   ]
+  },
+  {
+   "match": "^arm_L_upper$",
+   "limits": [
+    [
+     -130,
+     130
+    ],
+    [
+     -130,
+     130
+    ],
+    [
+     -100,
+     130
+    ]
+   ]
+  },
+  {
+   "match": "^arm_L_lower$",
+   "limits": [
+    [
+     -86,
+     92
+    ],
+    [
+     -30,
+     46
+    ],
+    [
+     -57,
+     55
+    ]
+   ]
+  },
+  {
+   "match": "^leg_L_upper$",
+   "limits": [
+    [
+     -115,
+     130
+    ],
+    [
+     -106,
+     130
+    ],
+    [
+     -85,
+     130
+    ]
+   ]
+  },
+  {
+   "match": "^leg_L_lower$",
+   "limits": [
+    [
+     -100,
+     99
+    ],
+    [
+     -30,
+     46
+    ],
+    [
+     -50,
+     52
+    ]
+   ]
+  },
+  {
+   "match": "^arm_R_upper$",
+   "limits": [
+    [
+     -129,
+     130
+    ],
+    [
+     -130,
+     130
+    ],
+    [
+     -130,
+     130
+    ]
+   ]
+  },
+  {
+   "match": "^arm_R_lower$",
+   "limits": [
+    [
+     -84,
+     97
+    ],
+    [
+     -49,
+     30
+    ],
+    [
+     -55,
+     58
+    ]
+   ]
+  },
+  {
+   "match": "^leg_R_upper$",
+   "limits": [
+    [
+     -130,
+     93
+    ],
+    [
+     -105,
+     130
+    ],
+    [
+     -113,
+     76
+    ]
+   ]
+  },
+  {
+   "match": "^leg_R_lower$",
+   "limits": [
+    [
+     -63,
+     126
+    ],
+    [
+     -57,
+     30
+    ],
+    [
+     -43,
+     51
+    ]
+   ]
+  },
+  {
+   "match": "^hand_L$",
+   "limits": [
+    [
+     -130,
+     130
+    ],
+    [
+     -130,
+     130
+    ],
+    [
+     -130,
+     130
+    ]
+   ]
+  },
+  {
+   "match": "^hand_R$",
+   "limits": [
+    [
+     -130,
+     130
+    ],
+    [
+     -130,
+     130
+    ],
+    [
+     -130,
+     130
+    ]
+   ]
+  },
+  {
+   "match": "^foot_L$",
+   "limits": [
+    [
+     -118,
+     64
+    ],
+    [
+     -82,
+     56
+    ],
+    [
+     -107,
+     82
+    ]
+   ]
+  },
+  {
+   "match": "^foot_R$",
+   "limits": [
+    [
+     -59,
+     130
+    ],
+    [
+     -99,
+     59
+    ],
+    [
+     -81,
+     59
+    ]
+   ]
+  },
+  {
+   "match": "^(?!(?:body|neck_01|head|arm_L_upper|arm_L_lower|leg_L_upper|leg_L_lower|arm_R_upper|arm_R_lower|leg_R_upper|leg_R_lower|hand_L|hand_R|foot_L|foot_R)$).*$",
+   "limits": null
+  }
+ ],
+ "helper_bones": [],
+ "smooth_chains": [],
+ "pole": {
+  "root": "Fan_root",
+  "hands": [
+   "hand_L",
+   "hand_R"
+  ],
+  "grips": [
+   [
+    -0.018000013048080465,
+    0.0569999992923339,
+    -0.060000032006874426
+   ],
+   [
+    0.017999992851343738,
+    0.056999984816793914,
+    -0.060000038163665614
+   ]
+  ],
+  "bottom": [
+   -0.12273992548254734,
+   0.4692244963205511,
+   0.38366682265363605
+  ],
+  "axis": [
+   0.16795605870369903,
+   -0.9780927319205095,
+   0.12298524346031933
+  ],
+  "param_c": 0.5163476088517902,
+  "length": 1.4,
+  "keypoints": [
+   "pole_bottom",
+   "pole_top"
+  ],
+  "slide_m": 0.25,
+  "flip_prob": 0.5,
+  "wiggle_deg": 3,
+  "free_fraction": 0.4
+ },
+ "render": {
+  "symmetric_fraction": 0,
+  "view0": "front",
+  "top_fraction": 0.0
+ },
+ "start_frame": {
+  "adjust": {
+   "front": {
+    "zoom": 1.6,
+    "dy": -0.1
+   },
+   "side": {
+    "zoom": 1.6,
+    "dy": -0.1
+   }
+  },
+  "panel_width": 1360,
+  "panel_height": 1536,
+  "views": null,
+  "layout": "lr",
+  "options": {
+   "views": "fs",
+   "layout": "lr",
+   "ratio": "16:9"
+  }
+ },
+ "video": {
+  "layout": "lr"
+ },
+ "train": {
+  "quality": "std"
+ }
+}

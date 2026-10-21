@@ -4,7 +4,7 @@ blender -b <project>/rig/clean.blend --python src/bl_apply.py -- PROJECT FIT_DIR
 MODE: blend | fbx | render     (writes FIT_DIR/mocap.blend, FIT_DIR/mocap.fbx, FIT_DIR/render/*.jpg)
 """
 import bpy, sys, json, math, os, numpy as np
-from mathutils import Euler, Vector
+from mathutils import Euler, Vector, Matrix
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import qconfig as Q
@@ -26,6 +26,12 @@ arm.animation_data_create()
 act = bpy.data.actions.new(cfg["name"] + "_mocap"); arm.animation_data.action = act
 arm.rotation_mode = 'XYZ'
 free = [n for n in names if Q.bone_limits_deg(cfg, n, names) is not None or Q.helper_source(cfg, n, names)]
+PA = f["pole_A"] if ("pole_A" in f.files and cfg.get("pole")) else None
+if PA is not None and len(PA) == T:                    # free pole body: keyed as location + rotation of its root bone
+    pole_pb = arm.pose.bones[cfg["pole"]["root"]]; pole_pb.rotation_mode = 'QUATERNION'
+    rest_pole = np.array(arm.data.bones[pole_pb.name].matrix_local)
+else:
+    PA = None
 for t in range(T):
     fr = t + 1
     arm.location = Vector(L[t]); arm.rotation_euler = Euler(R[t], 'XYZ')
@@ -35,6 +41,11 @@ for t in range(T):
         pb.rotation_euler = Euler(E[t, i], 'XZY')
         if n in free:
             pb.keyframe_insert("rotation_euler", frame=fr)
+    if PA is not None:                                 # its parent (root) is fixed, so basis = rest^-1 A rest
+        pole_pb.rotation_mode = 'QUATERNION'                # the bone loop above resets every bone to XZY: key what we set
+        pole_pb.matrix_basis = Matrix((np.linalg.inv(rest_pole) @ PA[t] @ rest_pole).tolist())
+        pole_pb.keyframe_insert("location", frame=fr); pole_pb.keyframe_insert("rotation_quaternion", frame=fr)
+        pole_pb.keyframe_insert("scale", frame=fr)
     if fr % 20 == 0: print(f"PROGRESS {fr}/{T}", flush=True)
 sc.frame_start, sc.frame_end = 1, T
 sc.render.fps = fps
@@ -61,12 +72,13 @@ PW, PH = int(argv[3]), int(argv[4])
 os.makedirs(os.path.join(FD, "render"), exist_ok=True)
 ow = cams["panels"]["front"]["ortho_width_m"]
 bg_col = (0.62, 0.62, 0.62)
-bpy.ops.mesh.primitive_plane_add(size=40 * ow / 3, location=(0, 0, 0))
-floor = bpy.context.active_object
-fm = bpy.data.materials.new("Floor"); fm.use_nodes = True
-bsdf = next(n for n in fm.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
-bsdf.inputs["Base Color"].default_value = (*bg_col, 1); bsdf.inputs["Roughness"].default_value = 0.9
-floor.data.materials.append(fm)
+if not cfg["start_frame"].get("mid_air"):            # flying rigs: no floor, no floor shadow
+    bpy.ops.mesh.primitive_plane_add(size=40 * ow / 3, location=(0, 0, 0))
+    floor = bpy.context.active_object
+    fm = bpy.data.materials.new("Floor"); fm.use_nodes = True
+    bsdf = next(n for n in fm.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
+    bsdf.inputs["Base Color"].default_value = (*bg_col, 1); bsdf.inputs["Roughness"].default_value = 0.9
+    floor.data.materials.append(fm)
 world = sc.world or bpy.data.worlds.new("W"); sc.world = world; world.use_nodes = True
 bgn = next(n for n in world.node_tree.nodes if n.type == 'BACKGROUND')
 bgn.inputs[0].default_value = (*bg_col, 1); bgn.inputs[1].default_value = 0.9

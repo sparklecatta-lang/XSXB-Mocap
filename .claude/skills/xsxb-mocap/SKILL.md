@@ -1,6 +1,6 @@
 ---
 name: xsxb-mocap
-description: XSXB MOCAP (QuadMocap) in chat - motion-capture a rigged character from Seedance two-view videos. Import a rigged .blend/.fbx/.glb, make the start frame (views / layout / ratio), train the detector (fast / standard / fine), then drop generated videos to get a compare video plus FBX/.blend. Use when the user says XSXB MOCAP, 动捕, 动作捕捉, QuadMocap, 首帧图, 训练角色, or hands over a rigged model or a Seedance video for a character.
+description: XSXB MOCAP (QuadMocap) in chat - motion-capture a rigged character from Seedance two-view videos. Import a rigged .blend/.fbx/.glb, make the start frame (views / layout / ratio), train the detector (fast / standard / fine), then drop generated videos to get a compare video plus FBX/.blend. Use when the user says XSXB MOCAP, 动捕, 动作捕捉, QuadMocap, 首帧图, 训练角色, hands over a rigged model or a Seedance video for a character, or asks to clean up a mocap result (后处理, 修动作).
 ---
 
 # XSXB MOCAP
@@ -57,6 +57,32 @@ it ends; `"$PY" "$X" job <JOB>` gives the current state and minutes left.
 `"$PY" "$X" wait <JOB>`, then `"$PY" "$X" status <NAME>` for the paths. Send `COMPARE` (compare.mp4: left = source,
 right = fitted character) with SendUserFile and give the full paths of `mocap.fbx` and `mocap.blend`.
 The character must be trained first; if not, go back to step 3.
+
+**5. Post-processing (后处理), only when the user asks to clean up a result.** The tool's job ends with the raw
+fit. Fixes for one clip or one character belong here, never in `src/`, the config or training. This is the one place
+where you may run Blender yourself, always on copies.
+- **Find the bad frames.** Watch `compare.mp4` and make a few contact sheets (at most 1280 px). Use the frame numbers
+  in the top-left corner. Read `fit_report.json` (`per_kp_px_mean`): keypoints with a high error point to the body part.
+  Ask the user which seconds look wrong, and convert seconds to frames with the fps from `"$PY" "$X" status`.
+- **Never overwrite the outputs.** Open `mocap.blend` and save `mocap_post.blend`; export `mocap_post.fbx` (same FBX
+  settings as the original: armature + mesh, baked action). Keep `mocap.blend` / `mocap.fbx` untouched.
+- **Common problems and generic fixes**, applied to the armature's action (pose-bone and object-level F-curves):
+  - *Short flip or wrong twist* (the body turns the wrong way for a few frames, front/back or belly/back swapped):
+    delete the keys in the bad range on the affected bones and let the good neighbours interpolate. If the gap is
+    long, key one or two in-between poses by copying the nearest good frame and rotating the root.
+  - *Jitter*: smooth only the jittery bones' curves over the bad range (Graph Editor: Gaussian or Butterworth smooth).
+    Leave fast intentional moves alone, and don't flatten whole-clip curves.
+  - *Feet sliding* (characters with a floor): key the foot in place while it is planted, or add an IK/limit-location
+    hold and bake it. Skip this for flying rigs.
+  - *Body drift or slow sinking*: correct the object or root location curve, not the limbs.
+  - *Limb through the body*: adjust that limb's upper bone on a few keys.
+  - *Loop for a game cycle*: pick two similar frames, trim to them, match the first and last keys, and add a Cycles
+    modifier.
+- **Show before/after.** Render the fixed range from the start-frame cameras (`start_frame\cameras.json` stores each
+  panel's camera location, rotation and ortho width). Put it next to the original `compare.mp4` frames, send it with
+  SendUserFile, and give the full paths of `mocap_post.blend` / `mocap_post.fbx`.
+- A one-off helper script for this clip, for example one that compares the character's colours in the source and the
+  render, is fine. Keep it in the clip's `fit\` folder, not in the tool.
 
 **Failures.** `wait` exits 1 and prints `LOG_TAIL`. Explain in one plain sentence; offer to retry. A busy character
 ("a job is already running") just means: wait for the running job (`status` shows it).

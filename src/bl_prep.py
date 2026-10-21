@@ -165,14 +165,15 @@ def draft_config():
     size = float((hi - lo).max())
     pairs = [("_L_", "_R_"), (".L", ".R"), ("_L", "_R"), ("Left", "Right"), ("_l_", "_r_"), (".l", ".r"),
              ("_l", "_r"), ("L_", "R_"), ("left", "right")]
+    dnames = [n for n in names if arm.data.bones[n].use_deform] or names      # helper/cloth bones must not vote
     best, tok = 0, None
     for a, b in pairs:
-        k = sum(1 for n in names if a in n and n.replace(a, b) in bidx)
+        k = sum(1 for n in dnames if a in n and n.replace(a, b) in bidx)
         if k > best: best, tok = k, (a, b)
     orient = {"forward": "-Y", "left": "+X"}
     if tok:                                          # infer left axis from where the left bones sit
-        L = np.mean([heads[bidx[n]] for n in names if tok[0] in n and n.replace(*tok) in bidx], 0)
-        R = np.mean([heads[bidx[n.replace(*tok)]] for n in names if tok[0] in n and n.replace(*tok) in bidx], 0)
+        L = np.mean([heads[bidx[n]] for n in dnames if tok[0] in n and n.replace(*tok) in bidx], 0)
+        R = np.mean([heads[bidx[n.replace(*tok)]] for n in dnames if tok[0] in n and n.replace(*tok) in bidx], 0)
         d = (L - R)[:2]; ax = int(np.argmax(np.abs(d)))
         left = ("+" if d[ax] > 0 else "-") + "XY"[ax]
         fwd = np.cross(Q.axis(left), (0, 0, 1))      # forward = left x up
@@ -213,7 +214,7 @@ def draft_config():
     zmin, zh = lo[2], hi[2] - lo[2]
     feet = [kps[k][0] for k in range(len(kps)) if pos[k][2] < zmin + 0.06 * zh]
     return {"name": os.path.basename(os.path.normpath(PROJECT)),
-            "armature": arm.name, "mesh": me.name, "orientation": orient,
+            "armature": arm.name, "mesh": me.name, "orientation": orient, "orientation_confirmed": False,
             "side_tokens": list(tok) if tok else None, "keypoints": kps, "skeleton": skel, "foot_keypoints": feet,
             "default_limits": [[-45, 45], [-15, 15], [-25, 25]],
             "joint_limits": [{"match": "^" + re.escape(names[i]) + "$", "limits": None}

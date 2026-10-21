@@ -49,7 +49,12 @@ _chain_idx = {i for idx, _ in CHAINS for i in idx}
 FAST = np.array([1.0 if any(t in n for t in _tok) or i in _chain_idx else 0.25 for i, n in enumerate(names)])
 LTOK = (cfg.get("side_tokens") or [None])[0]
 MSIGN = np.array(cfg["mirror_sign"], float)
-FWD, LEFT = Vector(Q.axis(cfg["orientation"]["forward"])), Vector(Q.axis(cfg["orientation"]["left"]))
+FWD, LEFT = (Vector(v) for v in Q.orient_vectors(cfg))
+from pole import Pole, rot_between
+POLE = Pole(cfg["pole"], names) if cfg.get("pole") else None
+POLE_ST = ("hand", 1.0, 0.0, None)                  # pole of the current sample: ("hand", end-for-end sign, slide, wiggle) or ("free", offset, direction)
+FREE_FRAC = float(cfg["pole"].get("free_fraction", 0.0)) if POLE else 0.0
+REST_ARM = np.array([np.array(b.matrix_local) for b in arm.data.bones])
 AZ_F, AZ_S = Q.view_azimuths_deg(cfg)
 
 
@@ -103,12 +108,26 @@ def set_pose(e, body_rot, body_off=(0, 0, 0)):
     arm.rotation_euler = body_rot
     arm.location = BASE_LOC + Vector(body_off)
     bpy.context.view_layer.update()
+    if POLE:                                        # pole rests in the grip: place it from the hands, then repose its bones
+        PL, PR = (np.array(arm.pose.bones[names[h]].matrix) for h in POLE.hands)
+        if POLE_ST[0] == "free":                    # world placement -> armature space
+            Mi = arm.matrix_world.inverted()
+            bw = BASE_LOC + Vector(body_off) + Vector(POLE_ST[1])
+            ba = np.array(Mi @ bw); da = np.array(Mi.to_3x3() @ Vector(POLE_ST[2])); da /= np.linalg.norm(da)
+            A = POLE.matrix(rot_between(POLE.u0, da), ba)
+        else:
+            A = POLE.from_hands(PL, PR, *POLE_ST[1:])
+        arm.pose.bones[names[POLE.root]].matrix = Matrix((A @ REST_ARM[POLE.root]).tolist())
+        bpy.context.view_layer.update()
 
 
 def apply_pose(e):
     pitch = math.radians(rng.uniform(-RC["body_pitch_deg"], RC["body_pitch_deg"]))
     roll = math.radians(rng.uniform(-RC["body_roll_deg"], RC["body_roll_deg"]))
     rot = (Matrix.Rotation(roll, 3, FWD) @ Matrix.Rotation(pitch, 3, LEFT)).to_euler('XYZ')
+    global POLE_ST
+    if POLE:
+        POLE_ST = ("free",) + POLE.random_free(rng) if (FREE_FRAC > 0 and rng.random() < FREE_FRAC) else ("hand",) + POLE.random_state(rng)
     set_pose(e, rot)
     return rot
 
@@ -184,22 +203,37 @@ def look_at(obj, eye, target):
     obj.rotation_euler = d.to_track_quat('-Z', 'Y').to_euler()
 
 
+def look_down(obj, eye, target, az):
+    """Look-at with world-up; near straight down, image up = away from the azimuth (as in bl_start_frame)."""
+    f = (Vector(target) - Vector(eye)).normalized()
+    up = Vector((0, 0, 1)) if abs(f.z) < 0.999 else -Vector((math.cos(az), math.sin(az), 0))
+    r = f.cross(up).normalized(); u = r.cross(f)
+    obj.location = eye
+    obj.rotation_euler = Matrix((r, u, -f)).transposed().to_euler()
+
+
+TOP_FRAC = float(RC.get("top_fraction", 0.0))   # share of side-view cameras tilted to a top-down view (60-90 deg)
+
+
 def setup_camera(V, view):
     ctr = (V.min(0) + V.max(0)) / 2
     rad = float(np.linalg.norm(V - ctr, axis=1).max())
+    top = view == 1 and TOP_FRAC > 0 and rng.random() < TOP_FRAC
     if view == 0 and not V0_SIDE:
         az = math.radians(AZ_F + rng.uniform(-30, 30))
     else:
         az = math.radians(AZ_S + (0 if rng.random() < 0.7 else 180) + rng.uniform(-30, 30))
-    if rng.random() < 0.15: az = rng.uniform(0, 2 * math.pi)
-    el = math.radians(rng.uniform(-3, 25))
+    if not top and rng.random() < 0.15: az = rng.uniform(0, 2 * math.pi)
+    el = math.radians(rng.uniform(60, 90) if top else rng.uniform(-3, 25))
+    setup_camera.last = (math.degrees(az), math.degrees(el))
     dirv = np.array([math.cos(el) * math.cos(az), math.cos(el) * math.sin(az), math.sin(el)])
     ortho = rng.random() < 0.6
     cam_data.type = 'ORTHO' if ortho else 'PERSP'
     cam_data.lens = rng.uniform(40, 85); cam_data.sensor_width = 36; cam_data.sensor_fit = 'HORIZONTAL'
     dist = rad * 6 if ortho else rad / math.tan(math.atan(18 / cam_data.lens)) * 1.15
     cam_data.clip_end = max(100.0, dist * 4)
-    look_at(cam, Vector(ctr + dirv * dist), Vector(ctr))
+    if top: look_down(cam, Vector(ctr + dirv * dist), Vector(ctr), az)
+    else: look_at(cam, Vector(ctr + dirv * dist), Vector(ctr))
     cam_data.shift_x = cam_data.shift_y = 0
     cam_data.ortho_scale = 2 * rad
     bpy.context.view_layer.update()
@@ -339,7 +373,8 @@ for s in range(START, START + COUNT):
                 render_rgb(stem + "_rgb.png")
             render_dense(stem + "_dense.png")
             views.append({"P": P.tolist(), "V": Vw.tolist(), "ortho": cam_data.type == 'ORTHO',
-                          "kp2d": to_pixels(X).tolist()})
+                          "kp2d": to_pixels(X).tolist(),
+                          "az_deg": setup_camera.last[0], "el_deg": setup_camera.last[1]})
         rec["kp3d"] = X.tolist(); rec["views"] = views
     labels.append(rec)
     print(f"SAMPLE {s} deform={frac:.4f} rmax={rmax:.2f} rmin={rmin:.2f}", flush=True)

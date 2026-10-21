@@ -111,6 +111,8 @@ If Blender is not found automatically, set its path under **Settings**. Each ste
 
 To try it without training: **New project → Copy example: cat**. It ships with a trained head, the start frame and the
 test video, so you can go straight to step 4.
+**Copy example: doll** is a biped with a hand-held pole (a rigid object detected and fitted with the character), with two clips fitted;
+see [`examples/doll/README.md`](examples/doll/README.md).
 
 ### Making the video
 
@@ -148,6 +150,7 @@ One JSON per project (`PROJECT/config.json`); full example: [`examples/cat/confi
 |---|---|
 | `armature`, `mesh` | Object names. `mesh` may be a list (joined on import). |
 | `orientation` | `forward`: world axis the animal faces (`-Y` for the cat), `left`: axis its left side points to (`+X`). |
+| `pole` | optional hand-held pole (staff, spear) tracked as a free rigid body with two keypoints (bottom, top); see `src/pole.py` for the fields (`root`, `hands`, `grips`, `bottom`, `axis`, `param_c`, `length`, `keypoints`). Training renders place it in the grip (random end-for-end flip + slide), and a share `free_fraction` (default 0) of samples with the pole standing, leaning or floating on its own (`free_radius_m`, `free_flip_prob`); the fit gives it 6 DoF per frame with a "both grips on its axis" term. |
 | `side_tokens` | e.g. `["_L_", "_R_"]` or `[".L", ".R"]`; used for symmetric pose sampling. |
 | `keypoints` | `[name, bone, end]`, `end` = `"head"`, `"tail"` or 0–1 along the bone. Names starting with `l_` / `r_` are drawn in left/right colours. |
 | `skeleton` | Keypoint pairs, only for drawing. |

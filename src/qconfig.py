@@ -13,6 +13,7 @@ DEFAULTS = {
     "armature": None,                      # armature object name (auto-picked on import if null)
     "mesh": None,                          # skinned mesh object name, or a list (joined on import)
     "orientation": {"forward": "-Y", "left": "+X"},   # world axes the animal faces / its left side points to
+    "pole": None,                          # hand-held pole as a free rigid body, see pole.py
     "side_tokens": None,                   # e.g. ["_L_", "_R_"] or [".L", ".R"]; enables symmetric pose sampling
     "mirror_sign": [1, -1, -1],            # euler (x,y,z) sign flip when copying a left pose to the right bone
     "keypoints": [],                       # [name, bone, end]; end = "head" | "tail" | 0..1 along the bone
@@ -24,6 +25,8 @@ DEFAULTS = {
     "smooth_chains": [],                   # [{"match": regex, "amp_deg": [x, z]}] e.g. tails: sampled as one smooth curve
     "start_frame": {"panel_width": 1536, "panel_height": 1024, "tilt_deg": 8.0,
                     "ortho_width_m": None, "aim_height_m": None,    # null = derived from the mesh size
+                    "mid_air": False,                               # true: no floor, body left where it is
+                    "views": None,                                  # [top, bottom] {"az_deg": deg|"front"|"side", "tilt_deg"}
                     "layout": "tb"},                                # tb = panels stacked top/bottom, lr = left/right
     "render": {"resolution": 448, "samples": 1500, "workers": 3, "near_ref_fraction": 0.45,
                "symmetric_fraction": 0.3, "body_pitch_deg": 35, "body_roll_deg": 15,
@@ -122,12 +125,20 @@ def chains(cfg, names):
 
 
 def axis(s):
+    if isinstance(s, (int, float)):                    # free yaw: degrees from +X towards +Y
+        a = math.radians(s); return (math.cos(a), math.sin(a), 0.0)
     return AXES[s.upper().replace(" ", "")] if s[0] in "+-" else AXES["+" + s.upper()]
+
+
+def orient_vectors(cfg):
+    """(forward, left) unit vectors. forward = axis name or yaw degrees; left = axis name / degrees, or "auto" (= up x forward)."""
+    o = cfg["orientation"]; f = axis(o["forward"])
+    return f, ((-f[1], f[0], 0.0) if o.get("left") in (None, "auto") else axis(o["left"]))
 
 
 def view_azimuths_deg(cfg):
     """Camera azimuths (deg, from +X towards +Y) for the front view and the left-side view."""
-    f, l = axis(cfg["orientation"]["forward"]), axis(cfg["orientation"]["left"])
+    f, l = orient_vectors(cfg)
     return math.degrees(math.atan2(f[1], f[0])), math.degrees(math.atan2(l[1], l[0]))
 
 

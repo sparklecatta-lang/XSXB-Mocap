@@ -5,6 +5,8 @@ if not exist .venv (
   python -m venv .venv || goto :err
 )
 set "PY=%~dp0.venv\Scripts\python.exe"
+rem venvs created by uv have no pip; add it if missing
+"%PY%" -m pip --version >nul 2>&1 || "%PY%" -m ensurepip --upgrade || goto :err
 "%PY%" -m pip install --upgrade pip
 "%PY%" -m pip install torch torchvision --index-url https://download.pytorch.org/whl/cu128 || goto :err
 "%PY%" -m pip install -r requirements.txt || goto :err

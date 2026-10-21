@@ -211,7 +211,7 @@ SF_RATIOS = {"3:4": (3, 4), "4:3": (4, 3), "16:9": (16, 9), "9:16": (9, 16)}
 def start_options(cfg):
     """{views, layout, ratio} as the UI shows them, from the config (stored, or derived for older projects)."""
     sf = cfg["start_frame"]
-    if isinstance(sf.get("options"), dict): return sf["options"]
+    if isinstance(sf.get("options"), dict): return {**sf["options"], "adjust": sf.get("adjust") or {}}
     v = sf.get("views") or [{}, {}]
     v0, v1 = (v + [{}, {}])[:2]
     views = "st" if (v0 or {}).get("az_deg") == "side" else "ft" if float((v1 or {}).get("tilt_deg") or 0) >= 60 else "fs"
@@ -219,7 +219,20 @@ def start_options(cfg):
     W, H = float(sf["panel_width"]), float(sf["panel_height"])
     r = (2 * W / H) if layout == "lr" else W / (2 * H)
     ratio = min(SF_RATIOS, key=lambda k: abs(SF_RATIOS[k][0] / SF_RATIOS[k][1] - r))
-    return {"views": views, "layout": layout if layout in ("tb", "lr") else "tb", "ratio": ratio}
+    return {"views": views, "layout": layout if layout in ("tb", "lr") else "tb", "ratio": ratio, "adjust": sf.get("adjust") or {}}
+
+
+def set_adjust(d, adj):
+    """Per-panel framing tweaks from the UI: {"front": {"zoom", "dy"}, "side": {...}}."""
+    P = Q.paths(d)
+    raw = json.load(open(P["config"], encoding="utf-8"))
+    out = {}
+    for k in ("front", "side"):
+        a = (adj or {}).get(k) or {}
+        z, dy = float(a.get("zoom", 1.0)), float(a.get("dy", 0.0))
+        out[k] = {"zoom": round(min(4.0, max(0.25, z)), 3), "dy": round(min(0.6, max(-0.6, dy)), 3)}
+    raw.setdefault("start_frame", {})["adjust"] = out
+    Q.save(d, raw)
 
 
 def apply_start_options(d, o):
@@ -292,21 +305,43 @@ def cached_jpg(out, src, make):
 
 
 # ---------------------------------------------------------------- status
+FIT_VIEWS = ("both", "front", "side")
+
+
+def fit_dirs(d):
+    """{views: fit directory} of the finished-or-started fits of a video; a legacy 'fit' folder counts as both panels."""
+    legacy = os.path.join(d, "fit")
+    if os.path.isdir(legacy) and not os.path.exists(os.path.join(d, "fit_both")):
+        os.rename(legacy, os.path.join(d, "fit_both"))
+    return {k: os.path.join(d, "fit_" + k) for k in FIT_VIEWS if os.path.exists(os.path.join(d, "fit_" + k, "fit.npz"))}
+
+
 def video_status(d):
     vd = lambda *a: os.path.join(d, *a)
     st = {"id": os.path.basename(d), "source": os.path.exists(vd("source.mp4")),
-          "detected": os.path.exists(vd("det", "pred.npz")), "overlay": os.path.exists(vd("det", "overlay.mp4")),
-          "fitted": os.path.exists(vd("fit", "fit.npz")), "compare": os.path.exists(vd("fit", "compare.mp4")),
-          "blend": os.path.exists(vd("fit", "mocap.blend")), "fbx": os.path.exists(vd("fit", "mocap.fbx"))}
-    if os.path.exists(vd("fit", "fit_report.json")):
-        st["report"] = json.load(open(vd("fit", "fit_report.json")))
-        st["report"].pop("per_kp_px_mean", None)
+          "detected": os.path.exists(vd("det", "pred.npz")), "overlay": os.path.exists(vd("det", "overlay.mp4"))}
+    fits = []
+    for k, fd in fit_dirs(d).items():
+        f = {"views": k, "mtime": int(os.path.getmtime(os.path.join(fd, "fit.npz"))),
+             "compare": os.path.exists(os.path.join(fd, "compare.mp4")), "blend": os.path.exists(os.path.join(fd, "mocap.blend")),
+             "fbx": os.path.exists(os.path.join(fd, "mocap.fbx"))}
+        if f["compare"]: f["compare_mtime"] = int(os.path.getmtime(os.path.join(fd, "compare.mp4")))
+        rp = os.path.join(fd, "fit_report.json")
+        if os.path.exists(rp):
+            f["report"] = json.load(open(rp)); f["report"].pop("per_kp_px_mean", None)
+        fits.append(f)
+    fits.sort(key=lambda f: -f["mtime"])
+    st["fits"] = fits; st["fitted"] = bool(fits)
+    done = next((f for f in fits if f["compare"] and f["fbx"]), None)                  # newest complete fit drives the card
+    st["compare"] = bool(done); st["fbx"] = bool(done); st["blend"] = bool(done and done["blend"])
+    if done:
+        st["compare_mtime"] = done["compare_mtime"]; st["fit_views"] = done["views"]
+        if "report" in done: st["report"] = done["report"]
     if st["source"]:
         cap = cv2.VideoCapture(vd("source.mp4"))
         st["size"] = [int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))]
         st["frames"] = int(cap.get(cv2.CAP_PROP_FRAME_COUNT)); st["fps"] = cap.get(cv2.CAP_PROP_FPS); cap.release()
         st["duration"] = round(st["frames"] / st["fps"], 1) if st["fps"] else 0
-    if st["compare"]: st["compare_mtime"] = int(os.path.getmtime(vd("fit", "compare.mp4")))
     return st
 
 
@@ -338,7 +373,8 @@ def project_status(p):
     st = {"name": p, "source": os.path.exists(P["source"]), "prepped": os.path.exists(P["rig"]) and os.path.exists(P["clean"]),
           "config": os.path.exists(P["config"]), "start_frame": os.path.exists(P["start_png"]) and os.path.exists(P["cams"]),
           "samples": len(glob.glob(os.path.join(P["data"], "*_v0_rgb.png"))), "model": os.path.exists(P["model"]),
-          "ref_poses": os.path.exists(P["poses"])}
+          "ref_poses": os.path.exists(P["poses"]),
+          "orient_views": os.path.exists(os.path.join(d, "rig", "orient", "az_000.jpg"))}
     if st["config"]:
         try:
             c = Q.load(d); st["keypoints"] = len(c["keypoints"]); st["render_samples"] = c["render"]["samples"]
@@ -405,7 +441,7 @@ async def import_rig(file: UploadFile = File(...), name: str = Form("")):
     dst = P["source"] if ext == ".blend" else os.path.join(os.path.dirname(P["source"]), "source" + ext)
     with open(dst, "wb") as f:
         shutil.copyfileobj(file.file, f)
-    job = submit(p, "import_rig", [prep_stage(d, dst)])
+    job = submit(p, "import_rig", [prep_stage(d, dst), orient_stage(d)])
     return {"name": p, "job": job.id}
 
 
@@ -457,6 +493,11 @@ def prep_stage(d, source=None):
     src = source or P["source"]
     args = [src] if src.lower().endswith(".blend") else []
     return {"label": "prep", "cmds": [blender(*args, "--python", os.path.join(SRC, "bl_prep.py"), "--", d, *([] if args else [src]))]}
+
+
+def orient_stage(d):
+    P = Q.paths(d)
+    return {"label": "facing views", "cmds": [blender(P["clean"], "--python", os.path.join(SRC, "bl_orient.py"), "--", d)]}
 
 
 @app.post("/api/projects")
@@ -524,7 +565,12 @@ def validate_config(d, cfg):
     for f in c["foot_keypoints"]:
         if f not in kn: out.append(f"foot keypoint {f} unknown")
     for ax in ("forward", "left"):
-        if c["orientation"][ax].upper() not in Q.AXES: out.append(f"orientation.{ax} must be one of {list(Q.AXES)}")
+        v = c["orientation"].get(ax)
+        if ax == "left" and v in (None, "auto"): continue
+        if not isinstance(v, (int, float)) and str(v).upper() not in Q.AXES:
+            out.append(f"orientation.{ax} must be one of {list(Q.AXES)}" + (" or a yaw angle in degrees" if ax == "forward" else ' or "auto"'))
+    if not cfg.get("orientation_confirmed"):
+        out.append("Facing not confirmed: open model info and click the view in which the character faces the camera.")
     return out
 
 
@@ -539,7 +585,7 @@ async def upload_rig(p: str, file: UploadFile = File(...), reset_config: str = F
         shutil.copyfileobj(file.file, f)
     if reset_config == "1" and os.path.exists(P["config"]):
         os.replace(P["config"], P["config"] + ".bak")
-    job = submit(p, "import_rig", [prep_stage(d, dst)])
+    job = submit(p, "import_rig", [prep_stage(d, dst), orient_stage(d)])
     return {"job": job.id}
 
 
@@ -549,11 +595,14 @@ def run_step(p: str, step: str, body: dict = None):
     d = project_dir(p); P = Q.paths(d)
     if project_status(p)["busy"]: raise HTTPException(400, "a job is already running for this project")
     if step == "prep":
-        return {"job": submit(p, "prep", [prep_stage(d)]).id}
+        return {"job": submit(p, "prep", [prep_stage(d), orient_stage(d)]).id}
     if not os.path.exists(P["clean"]): raise HTTPException(400, "import the rig first")
+    if step == "orient":
+        return {"job": submit(p, "orient", [orient_stage(d)], est=15).id}
     cfg = Q.load(d)
     if not cfg["keypoints"]: raise HTTPException(400, "config has no keypoints")
     if step == "start_frame":
+        if "adjust" in body: set_adjust(d, body["adjust"])
         if any(k in body for k in ("views", "layout", "ratio")):          # options from the UI / skill
             apply_start_options(d, {**start_options(cfg), **body})
         st = {"label": "start frame", "cmds": [blender(P["clean"], "--python", os.path.join(SRC, "bl_start_frame.py"), "--", d)]}
@@ -627,12 +676,22 @@ def run_video_step(p: str, v: str, step: str, body: dict = None):
         raise HTTPException(400, "a job is already running for this project")
     for need, msg in ((P["clean"], "import the rig first"), (P["cams"], "make the start frame first (cameras.json)")):
         if not os.path.exists(need): raise HTTPException(400, msg)
-    src = os.path.join(vd, "source.mp4"); fd = os.path.join(vd, "fit")
+    src = os.path.join(vd, "source.mp4")
+    fit_dirs(vd)                                                             # migrate a legacy "fit" folder
+    fv = body.get("views", "both")
+    if fv not in FIT_VIEWS: raise HTTPException(400, "views both|front|side")
+    fd = os.path.join(vd, "fit_" + fv)
+    if step in ("process", "detect_fit") and os.path.exists(os.path.join(fd, "compare.mp4")) and os.path.exists(os.path.join(fd, "mocap.fbx")):
+        raise HTTPException(400, "this video already has a fit with these views")
+    det = os.path.join(vd, "det")
+    have_det = os.path.exists(os.path.join(det, "pred.npz")) and os.path.getmtime(os.path.join(det, "pred.npz")) >= max(
+        os.path.getmtime(src), os.path.getmtime(P["model"]))                         # a retrained model invalidates old detections
 
-    def detect_fit_stages(mode):
-        return [{"label": "detect keypoints", "cmds": [py("predict.py", "--project", d, "--src", src, "--out", os.path.join(vd, "det"))]},
+    def detect_fit_stages(mode, views="both"):
+        return [{"label": "detect keypoints", "cmds": [] if have_det else [py("predict.py", "--project", d, "--src", src, "--out", det)]},
                 {"label": "fit rig", "weight": 2.0,
-                 "cmds": [py("fit.py", "--project", d, "--pred", os.path.join(vd, "det", "pred.npz"), "--out", fd, "--mode", mode)]}]
+                 "cmds": [py("fit.py", "--project", d, "--pred", os.path.join(vd, "det", "pred.npz"), "--out", fd, "--mode", mode,
+                                                         *(["--views", views] if views in ("front", "side") else []))]}]
 
     def preview_stages():
         W, H = video_status(vd)["size"]
@@ -648,7 +707,7 @@ def run_video_step(p: str, v: str, step: str, body: dict = None):
     if step in ("detect_fit", "process"):
         if not os.path.exists(P["model"]): raise HTTPException(400, "train the model first")
         if step == "process":                     # the one-click path: detect + fit (ours) + preview + export
-            return {"job": submit(p, f"process_{v}", detect_fit_stages("ours") + preview_stages() + export_stages()).id}
+            return {"job": submit(p, f"process_{v}", detect_fit_stages("ours", fv) + preview_stages() + export_stages()).id}
         return {"job": submit(p, f"detect_fit_{v}", detect_fit_stages(body.get("mode", "ours"))).id}
     if not os.path.exists(os.path.join(fd, "fit.npz")): raise HTTPException(400, "run detect + fit first")
     if step == "preview":
