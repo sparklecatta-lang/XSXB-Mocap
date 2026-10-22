@@ -12,7 +12,7 @@ In the web app: **New project → Copy example: doll**, then go straight to the 
 | `model/head.pt`, `model/eval.json` | Detector head, 6000 steps on 1500 samples. 40 % of the samples have the pole planted / leaning / floating on its own (`pole.free_fraction`), the rest has it in the hands. DINOv2-base backbone is not included (`src/download_weights.py`). |
 | `start_frame/` | Start frame for Seedance (top: front, bottom: side) and `cameras.json`. |
 | `videos/2523/` | Spear thrust and a vertical pole at the end. Fit with both panels (`fit/`). |
-| `videos/1459/` | Flying kick on a planted pole (gold end up). The front panel is unreliable (the pole points at the camera and the video model cannot produce that view), so it is fitted with **only the side panel** (`fit/`, option "Only the side panel"). |
+| `videos/1459/` | Flying kick on a planted pole (gold end up). The two panels of the generated video face different ways, so after the pole vault the legs flail: a **limitation example**, fitted with both panels (`fit/`). Fitting with only one panel did not improve it. |
 
 Each `fit/` has `compare.mp4` (source vs fitted rig), `mocap.blend`, `mocap.fbx`, `fit.npz`, `fit_report.json`.
 
@@ -23,6 +23,6 @@ Each `fit/` has `compare.mp4` (source vs fitted rig), `mocap.blend`, `mocap.fbx`
   without those samples a pole planted in the ground is not detected, because the detector only ever saw it next to the hands.
 - **Choose the facing in the web app** (picker with 8 views) instead of relying on the model's coordinate axes; start-frame zoom/shift can be adjusted per project.
 - **Fit again with another option.** Fits are stored per option (`fit_both`, `fit_front`, `fit_side`); a video can be fitted once per option and the results compared.
-- If one panel disagrees with the other, fit with the single panel that matches the video.
+- The result depends on the generated video: if the two panels disagree, or one is missing, the fit gets worse (a single panel is an option, but it is not a cure).
 
 The result is **not perfect**: some frames have the lower leg or the pole end below the floor, and no foot locking. Cleanup is done in chat afterwards.
