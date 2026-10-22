@@ -17,54 +17,16 @@ The workflow comes from the YouTube video by **Can It Code?** —
 model, detect keypoints with a DINO-based model trained on synthetic renders of the rig, triangulate, and fit the skeleton.
 This repository is an independent re-implementation with the changes listed below. It is not affiliated with the video author.
 
-## What we changed
+## Features
 
-| | Original workflow (as we understood it) | This repo |
-|---|---|---|
-| Fitting target | Triangulate 3D points from the two views, then fit bones to the 3D points | Fit bones **directly to the 2D detections in both views** (reprojection error), no triangulation step |
-| Signal | Sparse keypoints | Keypoints **+ dense surface correspondences**: the head also predicts, per pixel, the rest-pose position on the mesh; those pixels are matched to mesh vertices (KD-tree) and the skinned vertices are fitted too |
-| Video drift | — | The video model's front panel drifts (zoom / moves toward the camera). The fitter solves a **smooth per-frame scale + vertical shift** for the front panel |
-| Training data | — | 30 % of the synthetic samples carry **afterimages** like fast motion in generated video: faint copies of nearby limb / tail poses. Labels and mask come from the main pose only, so the detector learns to ignore the ghosts |
-| Evaluation | — | **Synthetic ground-truth benchmark**: render the rig's own animation with the same cameras, run the whole pipeline, measure 3D error |
-| Rig | One creature | **Any rigged character** (tested on the cat and a procedural dog) through one JSON config (bone names, keypoints, joint limits, helper bones, orientation) |
+- **Fits directly to the 2D detections of both views** (reprojection error), with bone lengths fixed and only joint rotations solved.
+- **Dense surface correspondences** in addition to keypoints: the head also predicts, per pixel, the rest-pose position on the mesh; those pixels are matched to mesh vertices (KD-tree) and the skinned vertices are fitted too.
+- **Video drift**: the video model's front panel drifts (zoom / moves toward the camera), so the fitter solves a smooth per-frame scale + vertical shift for it.
+- **Training data with afterimages**: 30 % of the synthetic samples carry faint copies of nearby limb / tail poses, like fast motion in generated video. Labels and mask come from the main pose only, so the detector learns to ignore the ghosts.
+- **Any rigged character** through one JSON config (bone names, keypoints, joint limits, helper bones, orientation), tested on a cat, a dog and a biped; a hand-held object (staff, spear) can be tracked as one more rigid bone (`pole`).
+- **Synthetic ground-truth benchmark**: `src/synth_benchmark.py` renders the rig's own animation with the same cameras, runs the whole pipeline and measures the 3D error.
 
-Other details: bone lengths are fixed (only joint rotations are solved), joint-limit / floor terms, a robust smoothness
-term that keeps fast motion (galloping legs), a de-jitter low-pass after the fit,
-whole-sequence joint optimisation, and badly deformed synthetic samples (edge stretch) are dropped from training.
-
-### Comparison data
-
-Same detections, same rig, only the fitting method differs (`fit.py --mode ours` vs `--mode triangulate`).
-The original author's detector was not reproduced: "original" means our detector followed by the triangulation workflow.
-
-**Synthetic walk, 120 frames, ground truth known** (mean 3D keypoint error after aligning the pelvis, cm):
-
-| Method | All keypoints | Limbs | Tail |
-|---|---|---|---|
-| Triangulate, then fit (original) | 3.10 | 3.52 | 2.70 |
-| **Ours** (2D + surface, drift correction) | **2.87** | **3.27** | **2.26** |
-
-![Bar chart of the table above](examples/cat/benchmark/chart.svg)
-
-About 7 % lower error overall, 7 % on limbs, 16 % on the tail. The pelvis itself (always 0 after alignment) is excluded.
-The robust smoothing and de-jitter filter (see [Post-processing](#post-processing-suggestions)) lowered our error from
-3.58 to 2.87 cm here, and from 5.76 to 3.56 cm on a fast, motion-blurred synthetic walk.
-Data and commands: [`examples/cat/benchmark`](examples/cat/benchmark), see [the example README](examples/cat/README.md#benchmark);
-`src/synth_benchmark.py` runs the whole procedure (render → video → detect → fit both ways → evaluate) for any project.
-With the previous detector (trained without afterimages) on the same video the gap is larger: ours 2.84 / 3.28 / 2.49 cm
-vs. triangulation 3.72 / 4.23 / 3.57 cm (all / limbs / tail). The new detector mostly helps triangulation; our fit stays
-about the same.
-
-**Real Seedance video (example cat, 193 frames)** — no ground truth, so this is the median 2D distance between the fitted
-rig's keypoints and the detections (px, 834×556 panels):
-
-| Method | Front panel | Side panel |
-|---|---|---|
-| Triangulate, then fit | 8.4 | 7.8 |
-| **Ours** | **8.0** | **6.7** |
-
-Previous detector: triangulation 9.6 / 7.1, ours 9.0 / 6.2. A second clip (0° camera tilt, 193 frames) gives
-triangulation 8.7 / 7.4, ours 8.1 / 6.6 (previous detector: 9.7 / 7.5 and 9.0 / 6.5).
+Other details: joint-limit / floor terms, a robust smoothness term that keeps fast motion (galloping legs), a de-jitter low-pass after the fit, whole-sequence joint optimisation, and badly deformed synthetic samples (edge stretch) are dropped from training.
 
 ## Requirements
 

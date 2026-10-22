@@ -1,0 +1,477 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>XSXB MOCAP · 设计稿</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23002FA7'/%3E%3Cpath d='M10 10l12 12M22 10L10 22' stroke='%23F5F1E8' stroke-width='3.4' stroke-linecap='round'/%3E%3C/svg%3E">
+<style>
+:root{
+  color-scheme:light;
+  --bg:#F5F1E8;--paper:#FFFDF8;--stage:#ECE4D4;--sunk:#EDE6D8;--line:#E4DCCB;--line2:#D2C7B1;
+  --ink:#1B1915;--ink2:#4A453C;--mut:#7A7366;
+  --k:#002FA7;--k-h:#0038C4;--k-d:#00227A;--k-t:#E4E9F5;--k-t2:#CCD6EE;
+  --ok:#1F7A45;--warn:#9A6300;
+  --r:14px;--r-lg:22px;--r-xl:28px;
+  --sh:0 1px 2px rgba(45,35,15,.04),0 8px 24px -8px rgba(45,35,15,.10);
+  --sh-h:0 2px 4px rgba(45,35,15,.05),0 18px 40px -12px rgba(45,35,15,.20);
+  --disp:"Segoe UI Variable Display","Segoe UI",system-ui,-apple-system,"PingFang SC","Microsoft YaHei UI",sans-serif;
+  --text:"Segoe UI Variable Text","Segoe UI",system-ui,-apple-system,"PingFang SC","Microsoft YaHei UI",sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:15px/1.55 var(--text);-webkit-font-smoothing:antialiased;overflow-x:hidden}
+button{font:inherit;color:inherit;cursor:pointer;border:0;background:none;padding:0}
+a{color:inherit;text-decoration:none}
+.screen{display:none}
+.screen.on{display:block;animation:fade .35s ease}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+/* ---------- top bar ---------- */
+.top{display:flex;align-items:center;gap:16px;height:76px;padding:0 40px;max-width:1360px;margin:0 auto}
+.mark{display:flex;align-items:center;gap:12px;font:800 18px/1 var(--disp);letter-spacing:.2em}
+.mark i{display:grid;place-items:center;width:34px;height:34px;border-radius:10px;background:var(--k)}
+.mark b{color:var(--k)}
+.top .sp{flex:1}
+.iconbtn{display:grid;place-items:center;height:40px;min-width:40px;padding:0 12px;border-radius:12px;color:var(--ink2);font-weight:600;font-size:14px}
+.iconbtn:hover{background:var(--sunk);color:var(--ink)}
+.wrap{max-width:1360px;margin:0 auto;padding:8px 40px 140px}
+@media (max-width:720px){.top{padding:0 16px;height:64px}.wrap{padding:4px 16px 140px}}
+
+/* ---------- headings ---------- */
+.h1{font:700 52px/1.05 var(--disp);letter-spacing:-.02em;margin:24px 0 10px}
+.lead{font-size:18px;color:var(--ink2);margin:0 0 36px;max-width:60ch}
+.h2{font:700 28px/1.2 var(--disp);letter-spacing:-.01em;margin:0 0 20px;display:flex;align-items:baseline;gap:12px}
+.h2 small{font:600 16px/1 var(--text);color:var(--mut)}
+@media (max-width:720px){.h1{font-size:38px}.lead{font-size:16px;margin-bottom:24px}}
+
+/* ---------- buttons ---------- */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;height:52px;padding:0 26px;border-radius:16px;font:700 16px/1 var(--text);transition:background .15s,transform .1s,box-shadow .15s}
+.btn:active{transform:translateY(1px)}
+.btn.k{background:var(--k);color:#fff;box-shadow:0 8px 20px -8px rgba(0,47,167,.55)}
+.btn.k:hover{background:var(--k-h)}
+.btn.line{background:var(--paper);color:var(--ink);box-shadow:inset 0 0 0 1.5px var(--line2)}
+.btn.line:hover{box-shadow:inset 0 0 0 1.5px var(--k);color:var(--k)}
+.btn.soft{background:var(--k-t);color:var(--k)}
+.btn.soft:hover{background:var(--k-t2)}
+.btn.big{height:64px;font-size:18px;border-radius:18px;padding:0 34px}
+.btn.wide{width:100%}
+.btn.sm{height:42px;padding:0 18px;font-size:14px;border-radius:12px}
+
+/* ---------- character wall ---------- */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:28px}
+@media (max-width:720px){.grid{grid-template-columns:1fr;gap:18px}}
+.card{position:relative;background:var(--paper);border-radius:var(--r-lg);box-shadow:var(--sh);overflow:hidden;transition:transform .2s,box-shadow .2s;cursor:pointer}
+.card:hover{transform:translateY(-4px);box-shadow:var(--sh-h)}
+.shot{position:relative;aspect-ratio:4/3;background:var(--stage);overflow:hidden}
+.shot .img{position:absolute;inset:0;background-repeat:no-repeat;mix-blend-mode:multiply}
+.card .info{padding:18px 22px 22px}
+.card .name{font:700 24px/1.2 var(--disp);letter-spacing:-.01em}
+.status{display:flex;align-items:center;gap:8px;margin-top:6px;font-size:15px;color:var(--ink2);font-weight:500}
+.status .d{width:9px;height:9px;border-radius:50%;background:var(--line2)}
+.status.ready .d{background:var(--k)}
+.status.run .d{background:var(--k);animation:pulse 1.4s ease-in-out infinite}
+.status.todo .d{background:#C9A55A}
+@keyframes pulse{50%{opacity:.25}}
+.card .bar{position:absolute;left:0;right:0;bottom:0;height:5px;background:var(--k-t)}
+.card .bar i{display:block;height:100%;background:var(--k)}
+.newcard{background:var(--k);color:#F5F1E8;display:flex;flex-direction:column;justify-content:space-between;min-height:100%;padding:28px;box-shadow:0 16px 40px -18px rgba(0,47,167,.7)}
+.newcard:hover{background:var(--k-h)}
+.newcard .plus{width:64px;height:64px;border-radius:20px;border:2px solid rgba(245,241,232,.5);display:grid;place-items:center}
+.newcard .t{font:700 30px/1.15 var(--disp);letter-spacing:-.01em;margin-top:56px}
+.newcard .s{font-size:15px;opacity:.75;margin-top:8px}
+@media (max-width:720px){.newcard .t{margin-top:28px;font-size:26px}}
+
+/* ---------- character page ---------- */
+.back{display:inline-flex;align-items:center;gap:8px;color:var(--ink2);font-weight:600;margin-top:8px;padding:8px 12px 8px 4px;border-radius:10px}
+.back:hover{color:var(--k)}
+.charhead{display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px 24px;margin:8px 0 28px}
+.charhead .h1{margin:0}
+.facts{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:6px}
+.fact{height:34px;display:inline-flex;align-items:center;gap:6px;padding:0 14px;border-radius:99px;background:var(--paper);box-shadow:inset 0 0 0 1px var(--line);font-size:14px;font-weight:600;color:var(--ink2)}
+.fact.link{color:var(--k);box-shadow:none;background:transparent;padding:0 6px}
+.fact.link:hover{text-decoration:underline}
+
+/* stepper */
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:36px}
+.step{display:flex;align-items:center;gap:14px;padding:16px 20px;border-radius:18px;background:var(--paper);box-shadow:inset 0 0 0 1px var(--line);font:700 17px/1.2 var(--disp)}
+.step .n{flex:none;display:grid;place-items:center;width:36px;height:36px;border-radius:50%;background:var(--sunk);color:var(--mut);font:700 15px/1 var(--text)}
+.step small{display:block;font:500 13px/1.3 var(--text);color:var(--mut);margin-top:3px}
+.step.on{box-shadow:inset 0 0 0 2px var(--k);color:var(--k)}
+.step.on .n{background:var(--k);color:#fff}
+.step.done .n{background:var(--k-t);color:var(--k)}
+.step.wait{color:var(--mut)}
+@media (max-width:720px){.steps{grid-template-columns:1fr 1fr 1fr;gap:6px}.step{flex-direction:column;align-items:flex-start;gap:8px;padding:12px;font-size:14px}.step small{display:none}}
+
+.two{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:40px;align-items:start}
+@media (max-width:980px){.two{grid-template-columns:1fr;gap:28px}}
+.panel{background:var(--paper);border-radius:var(--r-xl);box-shadow:var(--sh);padding:28px}
+@media (max-width:720px){.panel{padding:20px;border-radius:var(--r-lg)}}
+
+/* live start-frame preview */
+.pvwrap{display:grid;place-items:center;background:var(--sunk);border-radius:var(--r-xl);padding:36px;min-height:520px}
+.pv{display:grid;gap:3px;background:#C9C2B3;border-radius:14px;overflow:hidden;box-shadow:0 20px 50px -24px rgba(45,35,15,.45);transition:all .35s ease;max-width:100%}
+.pv>div{position:relative;background:var(--stage);overflow:hidden}
+.pv>div .img{position:absolute;inset:0;background-repeat:no-repeat;mix-blend-mode:multiply;transition:all .35s ease}
+.pv>div span{position:absolute;left:10px;top:10px;font:700 12px/1 var(--text);letter-spacing:.06em;color:var(--ink2);background:rgba(255,253,248,.85);padding:6px 9px;border-radius:8px}
+.pvcap{margin-top:18px;color:var(--mut);font-size:14px;font-weight:600;text-align:center}
+@media (max-width:720px){.pvwrap{min-height:0;padding:20px}}
+
+/* option tiles */
+.og{margin-bottom:28px}
+.og h3{font:700 18px/1.2 var(--disp);margin:0 0 12px}
+.tiles{display:grid;gap:10px}
+.tiles.c3{grid-template-columns:repeat(3,1fr)}
+.tiles.c2{grid-template-columns:repeat(2,1fr)}
+.tiles.c4{grid-template-columns:repeat(4,1fr)}
+.tile{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;min-height:112px;padding:16px 10px;border-radius:18px;background:var(--bg);box-shadow:inset 0 0 0 1.5px var(--line);font:700 15px/1.2 var(--text);color:var(--ink2);text-align:center;transition:all .15s}
+.tile:hover{box-shadow:inset 0 0 0 1.5px var(--line2);background:#F1ECE1}
+.tile.sel{background:var(--k-t);box-shadow:inset 0 0 0 2.5px var(--k);color:var(--k)}
+.tile.sel::after{content:"";position:absolute;top:10px;right:10px;width:20px;height:20px;border-radius:50%;background:var(--k) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M5.5 10.5l3 3 6-7' fill='none' stroke='white' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/20px}
+.tile svg{color:currentColor}
+.tile small{font:500 12px/1.3 var(--text);color:var(--mut)}
+.tile.sel small{color:var(--k)}
+.ratio{border:2.5px solid currentColor;border-radius:5px}
+@media (max-width:720px){.tiles.c4{grid-template-columns:repeat(2,1fr)}.tile{min-height:96px}}
+
+/* quality tiles */
+.q{align-items:flex-start;text-align:left;padding:22px;min-height:170px;justify-content:flex-start;gap:4px}
+.q .min{font:700 46px/1 var(--disp);letter-spacing:-.03em;color:var(--ink)}
+.q .min em{font:600 15px/1 var(--text);font-style:normal;color:var(--mut);margin-left:4px}
+.q .nm{font:700 18px/1.2 var(--disp);margin-top:14px;color:var(--ink)}
+.q small{font-size:13px;margin-top:2px}
+.q.sel .min,.q.sel .nm{color:var(--k)}
+.q .tag{position:absolute;top:14px;right:14px;font:700 11px/1 var(--text);letter-spacing:.06em;padding:6px 9px;border-radius:8px;background:var(--k);color:#fff}
+.q.sel .tag{right:40px}
+
+/* start frame + prompt */
+.sf{display:flex;justify-content:center}
+.sf img{display:block;max-width:100%;max-height:640px;border-radius:var(--r-lg);mix-blend-mode:multiply}
+.prompt{margin-top:18px;background:var(--paper);border-radius:var(--r-lg);box-shadow:var(--sh);padding:22px 24px}
+.prompt .lab{display:flex;align-items:center;justify-content:space-between;gap:12px;font:700 15px/1.2 var(--disp);color:var(--mut);letter-spacing:.04em;margin-bottom:12px}
+.prompt p{margin:0;font:600 19px/1.6 var(--disp);color:var(--ink)}
+.row{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+
+/* training in progress */
+.train{display:flex;flex-direction:column;justify-content:center;min-height:100%}
+.eyebrow{font:700 13px/1 var(--text);letter-spacing:.14em;color:var(--k);text-transform:uppercase;display:flex;align-items:center;gap:10px}
+.eyebrow .d{width:9px;height:9px;border-radius:50%;background:var(--k);animation:pulse 1.4s infinite}
+.bignum{font:700 112px/.95 var(--disp);letter-spacing:-.05em;color:var(--k);margin:22px 0 4px}
+.bignum em{font:700 30px/1 var(--disp);letter-spacing:0;font-style:normal;margin-left:10px;color:var(--ink)}
+.track{height:12px;border-radius:99px;background:var(--k-t);overflow:hidden;margin:26px 0 12px}
+.track i{display:block;height:100%;width:38%;border-radius:99px;background:linear-gradient(90deg,var(--k),#2457D6)}
+.tmeta{display:flex;justify-content:space-between;color:var(--mut);font-weight:600;font-size:14px}
+.tip{display:flex;gap:14px;align-items:flex-start;margin-top:34px;padding:18px 20px;border-radius:18px;background:var(--bg);font-size:16px;color:var(--ink2);font-weight:500}
+.tip b{color:var(--ink)}
+@media (max-width:720px){.bignum{font-size:80px}}
+
+/* prep summary (character ready) */
+.prep{display:flex;flex-wrap:wrap;align-items:center;gap:14px 28px;padding:18px 22px;border-radius:20px;background:var(--paper);box-shadow:inset 0 0 0 1px var(--line);margin-bottom:44px}
+.prep .ck{display:flex;align-items:center;gap:10px;font:700 16px/1.2 var(--disp)}
+.prep .ck i{display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--k);color:#fff}
+.prep .sp{flex:1}
+
+/* action cards */
+.vgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:28px}
+@media (max-width:720px){.vgrid{grid-template-columns:1fr;gap:18px}}
+.vcard{background:var(--paper);border-radius:var(--r-lg);box-shadow:var(--sh);overflow:hidden;transition:transform .2s,box-shadow .2s}
+.vcard:hover{transform:translateY(-4px);box-shadow:var(--sh-h)}
+.vshot{display:block;position:relative;aspect-ratio:3/2;background:var(--stage);overflow:hidden;cursor:pointer}
+.vshot video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 92%;mix-blend-mode:multiply;transform:scale(1.18)}
+.vshot .play{position:absolute;inset:0;display:grid;place-items:center;opacity:0;transition:opacity .2s;background:rgba(27,25,21,.18)}
+.vshot .play i{display:grid;place-items:center;width:68px;height:68px;border-radius:50%;background:rgba(255,253,248,.95);color:var(--k);box-shadow:0 10px 30px -8px rgba(0,0,0,.4)}
+.vcard:hover .play{opacity:1}
+.vshot .badge{position:absolute;left:14px;top:14px;white-space:nowrap;height:30px;display:inline-flex;align-items:center;gap:7px;padding:0 12px;border-radius:99px;font:700 13px/1 var(--text);background:rgba(255,253,248,.92);color:var(--ink2)}
+.vshot .badge.ok{background:var(--k);color:#fff}
+.vshot .prog{position:absolute;left:0;right:0;bottom:0;padding:16px;background:linear-gradient(transparent,rgba(27,25,21,.55));color:#fff;font:700 15px/1 var(--text)}
+.vshot .prog .t{height:6px;border-radius:99px;background:rgba(255,255,255,.3);margin-top:10px;overflow:hidden}
+.vshot .prog .t i{display:block;height:100%;width:45%;background:#fff;border-radius:99px}
+.vcard .info{display:flex;align-items:center;gap:14px;padding:16px 18px 18px 22px}
+.vcard .name{font:700 22px/1.2 var(--disp);letter-spacing:-.01em}
+.vcard .meta{font-size:14px;color:var(--mut);font-weight:600;margin-top:2px}
+.vcard .info .sp{flex:1}
+.dropv{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;min-height:100%;padding:36px 24px;border-radius:var(--r-lg);border:2.5px dashed var(--k-t2);background:rgba(228,233,245,.35);color:var(--k);cursor:pointer;transition:all .15s}
+.dropv:hover{background:var(--k-t);border-color:var(--k)}
+.dropv .ic{width:72px;height:72px;border-radius:22px;background:var(--k);color:#fff;display:grid;place-items:center;box-shadow:0 12px 28px -12px rgba(0,47,167,.7)}
+.dropv .t{font:700 22px/1.25 var(--disp)}
+.dropv .s{font-size:14px;color:var(--ink2);font-weight:500}
+
+/* lightbox */
+.lb{position:fixed;inset:0;z-index:30;background:rgba(20,19,15,.88);backdrop-filter:blur(6px);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px;gap:22px}
+.lb .vbox{position:relative;width:min(1100px,100%);border-radius:20px;overflow:hidden;background:#000;box-shadow:0 30px 80px -20px rgba(0,0,0,.6)}
+.lb video{display:block;width:100%;max-height:68vh;object-fit:contain;background:#DCDAD4}
+.lb .lab{position:absolute;top:14px;font:700 13px/1 var(--text);letter-spacing:.06em;color:#fff;background:rgba(20,19,15,.6);padding:8px 12px;border-radius:9px}
+.lb .bot{display:flex;flex-wrap:wrap;align-items:center;gap:14px 18px;width:min(1100px,100%);color:#F5F1E8}
+.lb .bot .name{font:700 26px/1.2 var(--disp)}
+.lb .bot .meta{font-size:14px;opacity:.65;font-weight:600}
+.lb .bot .sp{flex:1}
+.lb .x{position:absolute;top:22px;right:22px;width:48px;height:48px;border-radius:50%;background:rgba(245,241,232,.12);color:#F5F1E8;display:grid;place-items:center}
+.lb .x:hover{background:rgba(245,241,232,.22)}
+.btn.onDark{background:rgba(245,241,232,.12);color:#F5F1E8}
+.btn.onDark:hover{background:rgba(245,241,232,.2)}
+
+/* job dock */
+.dock{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:20;display:flex;align-items:center;gap:14px;padding:10px 12px 10px 18px;border-radius:18px;background:var(--ink);color:#F5F1E8;box-shadow:0 18px 40px -12px rgba(0,0,0,.45);font-weight:600;font-size:14px;max-width:calc(100vw - 32px)}
+.dock .ring{flex:none;width:22px;height:22px;border-radius:50%;border:3px solid rgba(245,241,232,.2);border-top-color:#8FA8FF;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.dock .m{opacity:.6;font-weight:500}
+.dock button{height:34px;padding:0 12px;border-radius:10px;background:rgba(245,241,232,.1)}
+.dock button:hover{background:rgba(245,241,232,.2)}
+@media (max-width:720px){.dock .m{display:none}}
+
+/* mockup switcher (not part of the product) */
+.mock{position:fixed;right:18px;top:50%;transform:translateY(-50%);z-index:40;display:flex;flex-direction:column;gap:4px;padding:8px;border-radius:16px;background:rgba(255,253,248,.92);box-shadow:0 10px 30px -10px rgba(0,0,0,.25);backdrop-filter:blur(8px)}
+.mock b{font:700 10px/1 var(--text);letter-spacing:.14em;color:var(--mut);padding:6px 8px 4px}
+.mock a{padding:8px 12px;border-radius:10px;font-size:13px;font-weight:600;color:var(--ink2)}
+.mock a:hover{background:var(--sunk)}
+.mock a.on{background:var(--k);color:#fff}
+@media (max-width:1100px){.mock{top:auto;bottom:86px;transform:none;flex-direction:row;flex-wrap:wrap;right:12px;left:12px;justify-content:center}.mock b{display:none}}
+.shotmode .mock{display:none}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <a class="mark" href="#home"><i><svg width="16" height="16" viewBox="0 0 16 16"><path d="M3 3l10 10M13 3L3 13" stroke="#F5F1E8" stroke-width="2.6" stroke-linecap="round"/></svg></i>XSXB <b>MOCAP</b></a>
+  <span class="sp"></span>
+  <button class="iconbtn">EN</button>
+  <button class="iconbtn" aria-label="设置"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
+</header>
+
+<div class="wrap">
+
+<!-- ================= 1. HOME ================= -->
+<section class="screen" id="s-home">
+  <h1 class="h1">角色</h1>
+  <p class="lead">拖入一个绑好骨的模型，给它做动作捕捉。</p>
+  <div class="grid">
+    <div class="card newcard">
+      <span class="plus"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span>
+      <div><div class="t">拖入新角色</div><div class="s">.blend · .fbx · .glb，或点击选择文件</div></div>
+    </div>
+    <a class="card" href="#actions">
+      <div class="shot"><div class="img" data-sf="cat" data-pan="side"></div></div>
+      <div class="info"><div class="name">cat</div><div class="status ready"><span class="d"></span>可以用了 · 3 段动作</div></div>
+    </a>
+    <a class="card" href="#training">
+      <div class="shot"><div class="img" data-sf="dragon" data-pan="front"></div></div>
+      <div class="info"><div class="name">dragon</div><div class="status run"><span class="d"></span>训练中 · 还剩 25 分钟</div></div>
+      <div class="bar"><i style="width:38%"></i></div>
+    </a>
+    <a class="card" href="#setup">
+      <div class="shot"><div class="img" data-sf="cat_motion" data-pan="side"></div></div>
+      <div class="info"><div class="name">cat_motion</div><div class="status todo"><span class="d"></span>下一步：选择首帧</div></div>
+    </a>
+    <a class="card" href="#actions">
+      <div class="shot"><div class="img" data-sf="testdog" data-pan="side"></div></div>
+      <div class="info"><div class="name">testdog</div><div class="status ready"><span class="d"></span>可以用了 · 1 段动作</div></div>
+    </a>
+  </div>
+</section>
+
+<!-- ================= 2. SETUP: start frame ================= -->
+<section class="screen" id="s-setup">
+  <a class="back" href="#home"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>角色</a>
+  <div class="charhead"><h1 class="h1">cat_motion</h1>
+    <div class="facts"><span class="fact">自带 1 段动作</span><a class="fact link" href="#">模型信息 ›</a></div></div>
+  <div class="steps">
+    <div class="step on"><span class="n">1</span><div>首帧图<small>选角度和画面</small></div></div>
+    <div class="step wait"><span class="n">2</span><div>训练<small>约 40 分钟</small></div></div>
+    <div class="step wait"><span class="n">3</span><div>动作<small>拖入视频</small></div></div>
+  </div>
+  <div class="two">
+    <div><div class="pvwrap"><div class="pv" id="pv"></div><div class="pvcap" id="pvcap"></div></div></div>
+    <div class="panel">
+      <div class="og"><h3>拍哪两个角度</h3>
+        <div class="tiles c3" data-g="views">
+          <button class="tile sel" data-v="fs">${VIEW_FS}正面 + 侧面<small>最常用</small></button>
+          <button class="tile" data-v="ft">${VIEW_FT}正面 + 俯视</button>
+          <button class="tile" data-v="st">${VIEW_ST}侧面 + 俯视</button>
+        </div></div>
+      <div class="og"><h3>两个画面怎么摆</h3>
+        <div class="tiles c2" data-g="layout">
+          <button class="tile sel" data-v="tb"><svg width="44" height="44" viewBox="0 0 44 44" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="8" y="4" width="28" height="36" rx="4"/><path d="M8 22h28"/></svg>上下</button>
+          <button class="tile" data-v="lr"><svg width="44" height="44" viewBox="0 0 44 44" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="4" y="8" width="36" height="28" rx="4"/><path d="M22 8v28"/></svg>左右</button>
+        </div></div>
+      <div class="og"><h3>视频比例</h3>
+        <div class="tiles c4" data-g="ratio">
+          <button class="tile sel" data-v="3:4"><span class="ratio" style="width:24px;height:32px"></span>3:4</button>
+          <button class="tile" data-v="4:3"><span class="ratio" style="width:32px;height:24px"></span>4:3</button>
+          <button class="tile" data-v="16:9"><span class="ratio" style="width:36px;height:20px"></span>16:9</button>
+          <button class="tile" data-v="9:16"><span class="ratio" style="width:20px;height:36px"></span>9:16</button>
+        </div></div>
+      <a class="btn k big wide" href="#train">生成首帧图</a>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 3. TRAIN: choose quality ================= -->
+<section class="screen" id="s-train">
+  <a class="back" href="#home"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>角色</a>
+  <div class="charhead"><h1 class="h1">cat_motion</h1>
+    <div class="facts"><span class="fact">自带 1 段动作</span><a class="fact link" href="#">模型信息 ›</a></div></div>
+  <div class="steps">
+    <div class="step done"><span class="n">✓</span><div>首帧图<small>正面 + 侧面 · 上下 · 3:4</small></div></div>
+    <div class="step on"><span class="n">2</span><div>训练<small>选精度</small></div></div>
+    <div class="step wait"><span class="n">3</span><div>动作<small>拖入视频</small></div></div>
+  </div>
+  <div class="two">
+    <div>
+      <div class="sf"><img src="/files/cat_motion/start_frame/start_frame.png" alt=""></div>
+    </div>
+    <div class="panel">
+      <div class="og"><h3>训练精度</h3>
+        <div class="tiles c3" data-g="q">
+          <button class="tile q" data-v="fast"><span class="min">15<em>分钟</em></span><span class="nm">快</span><small>先看看效果</small></button>
+          <button class="tile q sel" data-v="std"><span class="tag">推荐</span><span class="min">40<em>分钟</em></span><span class="nm">标准</span><small>大多数动作</small></button>
+          <button class="tile q" data-v="fine"><span class="min">90<em>分钟</em></span><span class="nm">精细</span><small>快速、复杂的动作</small></button>
+        </div></div>
+      <a class="btn k big wide" href="#training">开始训练</a>
+      <div class="tip" style="margin-top:22px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#002FA7" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex:none;margin-top:2px"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16.5v.5"/></svg>
+        <span>首帧图已经可以用了。训练期间就可以拿它去 Seedance 生成视频。</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 4. TRAINING in progress ================= -->
+<section class="screen" id="s-training">
+  <a class="back" href="#home"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>角色</a>
+  <div class="charhead"><h1 class="h1">dragon</h1>
+    <div class="facts"><span class="fact">自带 1 段动作</span><a class="fact link" href="#">模型信息 ›</a></div></div>
+  <div class="steps">
+    <div class="step done"><span class="n">✓</span><div>首帧图<small>侧面 + 俯视 · 上下 · 4:3</small></div></div>
+    <div class="step on"><span class="n">2</span><div>训练<small>标准精度</small></div></div>
+    <div class="step wait"><span class="n">3</span><div>动作<small>拖入视频</small></div></div>
+  </div>
+  <div class="two">
+    <div class="panel train">
+      <div class="eyebrow"><span class="d"></span>正在训练</div>
+      <div class="bignum">25<em>分钟</em></div>
+      <div style="font:600 18px/1.4 var(--disp);color:var(--ink2)">预计还要这么久</div>
+      <div class="track"><i></i></div>
+      <div class="tmeta"><span>已完成 38%</span><span>已用 15 分钟</span></div>
+      <div class="tip"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#002FA7" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.8.8 1 1.5 1 2.5h6c0-1 .2-1.7 1-2.5A6 6 0 0 0 12 3z"/></svg>
+        <span><b>趁现在：</b>下载首帧图，复制右边的提示词，去 Seedance 生成视频。训练完把视频拖进来就行。</span></div>
+    </div>
+    <div>
+      <div class="sf"><img src="/files/dragon/start_frame/start_frame.png" alt=""></div>
+      <div class="prompt">
+        <div class="lab">SEEDANCE 提示词<button class="btn soft sm" id="copyBtn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>复制</button></div>
+        <p>上下两个画面需要完全同步。拍摄角度完全固定，不要缩放，背景和地面不变。</p>
+      </div>
+      <div class="row" style="margin-top:18px"><a class="btn k" href="/files/dragon/start_frame/start_frame.png" download><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12M7 11l5 5 5-5M5 20h14"/></svg>下载首帧图</a></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 5. ACTIONS ================= -->
+<section class="screen" id="s-actions">
+  <a class="back" href="#home"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>角色</a>
+  <div class="charhead"><h1 class="h1">cat</h1>
+    <div class="facts"><span class="fact">自带 1 段动作</span><a class="fact link" href="#">模型信息 ›</a></div></div>
+  <div class="prep">
+    <span class="ck"><i><svg width="14" height="14" viewBox="0 0 20 20"><path d="M5 10.5l3 3 6-7" fill="none" stroke="white" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></i>首帧图</span>
+    <span class="ck"><i><svg width="14" height="14" viewBox="0 0 20 20"><path d="M5 10.5l3 3 6-7" fill="none" stroke="white" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></i>训练完成 · 标准</span>
+    <span class="sp"></span>
+    <a class="btn line sm" href="#train">首帧图与提示词</a>
+    <a class="btn line sm" href="#train">重新训练</a>
+  </div>
+  <h2 class="h2">动作 <small>3 段</small></h2>
+  <div class="vgrid">
+    <div class="dropv">
+      <span class="ic"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="13" height="14" rx="2.5"/><path d="M16 10l5-3v10l-5-3"/></svg></span>
+      <div class="t">拖入生成好的视频</div>
+      <div class="s">可以一次拖多个</div>
+    </div>
+    <div class="vcard">
+      <a class="vshot" href="#play"><video muted preload="auto" src="/files/cat/videos/5456/source.mp4#t=2.6"></video>
+        <span class="badge ok"><svg width="14" height="14" viewBox="0 0 20 20"><path d="M5 10.5l3 3 6-7" fill="none" stroke="white" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>完成</span>
+        <span class="play"><i><svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13l11-6.5z"/></svg></i></span></a>
+      <div class="info"><div><div class="name">5456</div><div class="meta">8 秒</div></div><span class="sp"></span>
+        <a class="btn k sm" href="#"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12M7 11l5 5 5-5M5 20h14"/></svg>下载 FBX</a></div>
+    </div>
+    <div class="vcard">
+      <div class="vshot"><video muted preload="auto" src="/files/cat/videos/5781/source.mp4#t=3.4"></video>
+        <div class="prog">正在拟合 · 45%<div class="t"><i></i></div></div></div>
+      <div class="info"><div><div class="name">5781</div><div class="meta">8 秒</div></div><span class="sp"></span>
+        <button class="btn line sm" disabled style="opacity:.5">处理中…</button></div>
+    </div>
+    <div class="vcard">
+      <div class="vshot"><video muted preload="auto" src="/files/cat/videos/9328/source.mp4#t=1.8"></video>
+        <span class="badge">未拟合</span></div>
+      <div class="info"><div><div class="name">9328</div><div class="meta">8 秒</div></div><span class="sp"></span>
+        <button class="btn k sm">开始拟合</button></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 6. PLAY ================= -->
+<section class="screen" id="s-play"></section>
+
+</div>
+
+<div class="lb" id="lb" style="display:none">
+  <a class="x" href="#actions" aria-label="关闭"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></a>
+  <div class="vbox"><video id="lbv" muted loop autoplay playsinline preload="auto" src="/files/cat/videos/5456/fit/compare.mp4#t=2.6"></video>
+    <span class="lab" style="left:14px">原视频</span><span class="lab" style="left:calc(50% + 14px)">拟合结果</span></div>
+  <div class="bot"><div><div class="name">5456</div><div class="meta">cat · 8 秒 · 193 帧</div></div><span class="sp"></span>
+    <a class="btn onDark" href="#">下载 .blend</a>
+    <a class="btn k" href="#"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12M7 11l5 5 5-5M5 20h14"/></svg>下载 FBX</a></div>
+</div>
+
+<div class="dock" id="dock"><span class="ring"></span><span>dragon 训练中 · 38%</span><span class="m">还剩 25 分钟</span><button>详情</button></div>
+
+<nav class="mock" id="mock"><b>设计稿</b>
+  <a href="#home">1 角色墙</a><a href="#setup">2 选首帧</a><a href="#train">3 选精度</a><a href="#training">4 训练中</a><a href="#actions">5 动作</a><a href="#play">6 播放</a>
+</nav>
+
+<script>
+/* view-combo icons: plan view of the subject with the two cameras */
+const cam=(x,y,rot)=>`<g transform="translate(${x} ${y}) rotate(${rot})"><path d="M-6 -5h8l4 -3v16l-4 -3h-8z" fill="currentColor"/></g>`;
+const body=`<rect x="17" y="16" width="16" height="22" rx="7" fill="none" stroke="currentColor" stroke-width="2.4" opacity=".55"/>`;
+const topCam=`<circle cx="25" cy="27" r="16" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="3 4"/><circle cx="25" cy="27" r="3.5" fill="currentColor"/>`;
+const ICON={fs:`<svg width="52" height="52" viewBox="0 0 50 52">${body}${cam(25,48,-90)}${cam(46,27,180)}</svg>`,
+            ft:`<svg width="52" height="52" viewBox="0 0 50 52">${body}${topCam}${cam(25,49,-90)}</svg>`,
+            st:`<svg width="52" height="52" viewBox="0 0 50 52">${body}${topCam}${cam(47,27,180)}</svg>`};
+document.querySelectorAll('[data-g="views"] .tile').forEach(b=>b.innerHTML=b.innerHTML.replace(/\$\{VIEW_(FS|FT|ST)\}/,(m,k)=>ICON[k.toLowerCase()]));
+
+/* character cover: zoom into one panel of the start frame (panels are stacked top/bottom) */
+const SF={cat_motion:{h:2048,s:1.75,y:0.80},cat:{h:2048,s:1.75,y:0.80},cat_ghost:{h:2048,s:1.75,y:0.80},testdog:{h:2048,s:1.5,y:0.80},dragon:{h:1152,s:2.3,y:0.06}};
+document.querySelectorAll("[data-sf]").forEach(el=>{const c=SF[el.dataset.sf];
+  el.style.backgroundImage=`url(/files/${el.dataset.sf}/start_frame/start_frame.png)`;
+  el.style.backgroundSize=`${c.s*100}% auto`;el.style.backgroundPosition=`50% ${c.y*100}%`});
+
+/* live start-frame preview */
+const st={views:"fs",layout:"tb",ratio:"3:4"};
+const NAMES={f:"正面",s:"侧面",t:"俯视"};
+function pv(){
+  const [rw,rh]=st.ratio.split(":").map(Number),box=document.getElementById("pv");
+  const maxW=Math.min(520,innerWidth-80),maxH=460,s=Math.min(maxW/rw,maxH/rh);
+  box.style.width=rw*s+"px";box.style.height=rh*s+"px";
+  box.style.gridTemplateColumns=st.layout==="lr"?"1fr 1fr":"1fr";box.style.gridTemplateRows=st.layout==="lr"?"1fr":"1fr 1fr";
+  const v=st.views.split("");
+  box.innerHTML=v.map(k=>{const y=k==="f"?"18%":k==="s"?"82%":"82%";const extra=k==="t"?"filter:saturate(.2) opacity(.55);":"";
+    return `<div><div class="img" style="background-image:url(/files/cat_motion/start_frame/start_frame.png);background-size:${k==="t"?"260%":"230%"} auto;background-position:50% ${y};${extra}"></div><span>${NAMES[k]}</span></div>`}).join("");
+  document.getElementById("pvcap").textContent=`${NAMES[v[0]]} + ${NAMES[v[1]]} · ${st.layout==="tb"?"上下":"左右"} · ${st.ratio}`;
+}
+document.querySelectorAll("[data-g]").forEach(g=>g.addEventListener("click",e=>{const t=e.target.closest(".tile");if(!t)return;
+  g.querySelectorAll(".tile").forEach(x=>x.classList.toggle("sel",x===t));if(g.dataset.g in st){st[g.dataset.g]=t.dataset.v;pv()}}));
+addEventListener("resize",pv);pv();
+
+document.getElementById("copyBtn").onclick=e=>{navigator.clipboard&&navigator.clipboard.writeText(document.querySelector(".prompt p").textContent);e.currentTarget.lastChild.textContent="已复制"};
+
+/* routing between mock screens */
+function route(){
+  let h=(location.hash||"#home").slice(1);const play=h==="play";if(play)h="actions";
+  document.querySelectorAll(".screen").forEach(s=>s.classList.toggle("on",s.id==="s-"+h));
+  document.getElementById("lb").style.display=play?"flex":"none";
+  document.getElementById("dock").style.display=(h==="training"||play||(document.body.classList.contains("shotmode")&&h!=="home"))?"none":"flex";
+  document.querySelectorAll(".mock a").forEach(a=>a.classList.toggle("on",a.getAttribute("href")===location.hash||(!location.hash&&a.getAttribute("href")==="#home")));
+  if(play)document.getElementById("lbv").play().catch(()=>{});
+  scrollTo(0,0);
+}
+addEventListener("hashchange",route);if(new URLSearchParams(location.search).has("shot"))document.body.classList.add("shotmode");
+route();
+</script>
+</body>
+</html>

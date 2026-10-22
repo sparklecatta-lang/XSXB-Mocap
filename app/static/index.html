@@ -238,6 +238,14 @@ a.vshot{cursor:pointer}
 .lb .bot .name{font:700 26px/1.2 var(--disp)}
 .lb .bot .meta{font-size:14px;opacity:.65;font-weight:600}
 .lb .bot .sp{flex:1}
+.lb .ctl{position:absolute;left:0;right:0;bottom:0;display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;padding:10px 14px;background:linear-gradient(transparent,rgba(20,19,15,.78));color:#F5F1E8;opacity:0;transition:opacity .2s}
+.lb .vbox:hover .ctl,.lb .ctl.on{opacity:1}
+@media (hover:none){.lb .ctl{opacity:1}}
+.lb .ctl button{min-width:34px;height:32px;padding:0 10px;border-radius:9px;background:rgba(245,241,232,.14);color:#F5F1E8;font:700 13px/1 var(--text);display:inline-grid;place-items:center}
+.lb .ctl button:hover{background:rgba(245,241,232,.26)}
+.lb .ctl button.cur{background:#F5F1E8;color:#14130F}
+.lb .ctl .rd{font:700 18px/1 var(--text);font-variant-numeric:tabular-nums;margin:0 8px;min-width:76px}
+.lb .ctl .sp{flex:1}
 .lb .x{position:absolute;top:22px;right:22px;width:48px;height:48px;border-radius:50%;background:rgba(245,241,232,.12);color:#F5F1E8;display:grid;place-items:center;z-index:1}
 .lb .x:hover{background:rgba(245,241,232,.22)}
 .btn.onDark{background:rgba(245,241,232,.12);color:#F5F1E8}
@@ -315,7 +323,7 @@ const TX={
   frameReady:"首帧图已经可以用了。训练期间就可以拿它去 Seedance 生成视频。",reframe:"重新选择首帧",adv:"高级设置",samples:"训练图片数",steps:"训练步数",
   trainingNow:"正在训练",queuedNow:"排队中",etaCap:"预计还要这么久",doneP:"已完成 {0}%",used:"已用 {0} 分钟",
   meanwhile:"<b>趁现在：</b>下载首帧图，复制右边的提示词，去 Seedance 生成视频。训练完把视频拖进来就行。",cancelTrain:"取消训练",
-  promptLab:"SEEDANCE 提示词",copy:"复制",copied:"已复制",dlFrame:"下载首帧图",
+  promptLab:"SEEDANCE 提示词",copy:"复制",copied:"已复制",lbPause:"暂停",lbPlay:"播放",lbFrame:"帧",dlFrame:"下载首帧图",
   prompt:"{0}两个画面需要完全同步。拍摄角度完全固定，不要缩放，背景和地面不变。",
   trainDone:"训练完成",framePrompt:"首帧图与提示词",actions:"动作",dropVid:"拖入生成好的视频",dropVidS:"可以一次拖多个",
   vsBoth:"两个画面",fitMore:"再拟合",vsOnly:"只用{0}画面（{1}）",vsPos:{lr:["左边","右边"],tb:["上面","下面"]},
@@ -346,7 +354,7 @@ const TX={
   frameReady:"The start frame is ready. Use it in Seedance while training runs.",reframe:"Choose start frame again",adv:"Advanced",samples:"Training images",steps:"Training steps",
   trainingNow:"Training",queuedNow:"Queued",etaCap:"left, roughly",doneP:"{0}% done",used:"{0} min so far",
   meanwhile:"<b>Meanwhile:</b> download the start frame, copy the prompt and make videos in Seedance. Drop them in when training is done.",cancelTrain:"Cancel training",
-  promptLab:"SEEDANCE PROMPT",copy:"Copy",copied:"Copied",dlFrame:"Download start frame",
+  promptLab:"SEEDANCE PROMPT",copy:"Copy",copied:"Copied",lbPause:"Pause",lbPlay:"Play",lbFrame:"frame",dlFrame:"Download start frame",
   prompt:"The {0} panels must stay perfectly in sync. Camera angles fixed, no zoom, background and floor unchanged.",
   trainDone:"Trained",framePrompt:"Start frame & prompt",actions:"Actions",dropVid:"Drop generated videos",dropVidS:"Several at once is fine",
   vsBoth:"Both panels",fitMore:"Fit again",vsOnly:"{0} panel only ({1})",vsPos:{lr:["Left","Right"],tb:["Top","Bottom"]},
@@ -644,6 +652,13 @@ function charHTML(S,r){
 }
 
 /* ================= lightbox ================= */
+let lbRate=1;
+function lbInfo(){const vid=$("#lbHost video");if(!vid)return null;const S=P(parseRoute().p),v=S&&S.videos.find(x=>x.id===parseRoute().vid);const fps=(v&&v.fps)||24,n=(v&&v.frames)||0;
+  const fi=Math.min(Math.max(0,Math.round(vid.currentTime*fps)),Math.max(0,n-1));return {vid,fps,n,fi,tm:vid.currentTime}}
+function lbSync(){const i=lbInfo();if(!i)return;const rd=$("#lbRd"),pp=$("#lbPP");
+  if(rd)rd.textContent=`${t("lbFrame")} ${i.fi}`;
+  if(pp){pp.textContent=i.vid.paused?"▶":"❚❚";pp.setAttribute("aria-label",i.vid.paused?t("lbPlay"):t("lbPause"))}
+  const c=$(".lb .ctl");if(c)c.classList.toggle("on",i.vid.paused)}
 function renderLB(r){
   const host=$("#lbHost"),S=r.v==="char"&&P(r.p),v=S&&r.vid&&S.videos.find(x=>x.id===r.vid);
   if(!v||!v.compare){if(host.innerHTML){host.innerHTML="";host.dataset.key="";document.body.style.overflow=""}return}
@@ -652,12 +667,18 @@ function renderLB(r){
   const f=fitUrl(S,v,cf.views),many=(v.fits||[]).filter(x=>x.compare&&x.fbx);
   host.innerHTML=`<div class="lb" data-act="lbBack"><button class="x" data-act="lbClose" aria-label="${t("close")}">${I.x}</button>
     <div class="vbox"><video muted loop autoplay playsinline preload="auto" src="${f}compare.mp4?v=${cf.compare_mtime||0}"></video>
-      <span class="lab" style="left:14px">${t("src")}</span><span class="lab" style="left:calc(50% + 14px)">${t("res")}</span></div>
+      <span class="lab" style="left:14px">${t("src")}</span><span class="lab" style="left:calc(50% + 14px)">${t("res")}</span>
+      <div class="ctl"><button data-act="lbPlay" id="lbPP" aria-label="${t("lbPause")}">❚❚</button><button data-act="lbStep" data-d="-1" aria-label="-1">‹</button><button data-act="lbStep" data-d="1" aria-label="+1">›</button>
+        ${[0.25,0.5,1].map(r=>`<button data-act="lbRate" data-r="${r}"${r===lbRate?" class=\"cur\"":""}>${r}×</button>`).join("")}
+        <span class="rd" id="lbRd"></span></div></div>
     <div class="bot"><div><div class="name">${esc(v.id)}</div><div class="meta">${esc(S.name)} · ${t("sec",Math.round(v.duration||0))} · ${t("frames",v.frames||0)}</div></div><span class="sp"></span>${many.length>1?many.map(x=>`<button class="btn sm ${x.views===cf.views?"k":"onDark"}" data-act="selFit" data-v="${esc(v.id)}" data-k="${x.views}">${fitLabel(S,x.views)}</button>`).join(""):""}
       ${cf.blend?`<a class="btn onDark" href="${f}mocap.blend" download="${esc(S.name)}_${esc(v.id)}_${cf.views}.blend">${t("dlBlend")}</a>`:""}
       ${cf.fbx?`<a class="btn k" href="${f}mocap.fbx" download="${esc(S.name)}_${esc(v.id)}_${cf.views}.fbx">${I.dl(18)}${t("dlFbx")}</a>`:""}</div></div>`;
   document.body.style.overflow="hidden";
-  host.querySelector("video").play().catch(()=>{});
+  const vid=host.querySelector("video");vid.playbackRate=lbRate;lbSync();
+  vid.addEventListener("timeupdate",lbSync);vid.addEventListener("play",lbSync);vid.addEventListener("pause",lbSync);vid.addEventListener("seeked",lbSync);
+  if(vid.requestVideoFrameCallback){const tick=()=>{lbSync();vid.requestVideoFrameCallback(tick)};vid.requestVideoFrameCallback(tick)}
+  vid.play().catch(()=>{});
 }
 
 /* ================= dock ================= */
@@ -792,6 +813,9 @@ document.addEventListener("click",async e=>{
     case"info":openInfo();break;
     case"closeSheet":closeSheet();break;
     case"veil":if(e.target===el)closeSheet();break;
+    case"lbPlay":{const i=lbInfo();if(i)i.vid.paused?i.vid.play():i.vid.pause();break}
+    case"lbStep":{const i=lbInfo();if(i){i.vid.pause();i.vid.currentTime=Math.min(Math.max(0,(i.fi+(+el.dataset.d)+0.5)/i.fps),i.vid.duration||1e9)}break}
+    case"lbRate":{lbRate=+el.dataset.r;const i=lbInfo();if(i)i.vid.playbackRate=lbRate;document.querySelectorAll(".lb .ctl [data-act=lbRate]").forEach(b=>b.classList.toggle("cur",+b.dataset.r===lbRate));break}
     case"lbClose":go(`#/p/${encodeURIComponent(r.p)}`);break;
     case"lbBack":if(e.target===el)go(`#/p/${encodeURIComponent(r.p)}`);break;
     case"copy":{const txt=$("#promptText").textContent;try{await navigator.clipboard.writeText(txt)}catch(_){const ta=document.createElement("textarea");ta.value=txt;document.body.appendChild(ta);ta.select();document.execCommand("copy");ta.remove()}
